@@ -12,18 +12,33 @@ from pathlib import Path
 
 
 def check_metrology_probe(comport):
-    ser=serial.Serial(comport,9600,timeout=1)
+    """
+    Communicates with a metrology probe over a serial port and returns its response.
+
+    Parameters
+    ----------
+    comport : str
+        The serial port to connect to (e.g., 'COM3' or '/dev/ttyUSB0').
+
+    Returns
+    -------
+    str
+        The decoded response from the probe after issuing the reset command.
+    """
+    reset_command = 'RMD0\r\n'
+    reset_bytes = reset_command.encode()
+
+    ser = serial.Serial(comport, 9600, timeout=1)
     time.sleep(0.02)
-    resetcmd = 'RMD0\r\n'
-    resetcmd_bytes = str.encode(resetcmd)
-    ser.write(resetcmd_bytes)
+
+    ser.write(reset_bytes)
     time.sleep(0.02)
-    s=ser.read(2048)
-    s_decode = s.decode("utf-8")
-    print(s_decode)
+
+    response = ser.read(2048).decode("utf-8")
+    print(response)
 
     ser.close()
-    return s_decode
+    return response
 
 
 def make_cam_file(filename, filenum, xval, ys, zs):
