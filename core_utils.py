@@ -28,12 +28,10 @@ def check_metrology_probe(comport):
 
 def make_cam_file(filename, filenum, xval, ys, zs):
     """
-    Creates a .Cam file with x, y, and z position data for a given file number.
+    Creates an Aerotech-compatible .Cam file with x, y, and z position data for a given file number.
 
     The output filename is constructed by appending the 4-digit zero-padded `filenum`
-    to the base `filename`, followed by the `.Cam` extension. The resulting file
-    contains a 4-line header (placeholder content) followed by rows of
-    space-separated x, y, z values.
+    to the base `filename`, followed by the `.Cam` extension.
 
     Parameters
     ----------
@@ -43,16 +41,19 @@ def make_cam_file(filename, filenum, xval, ys, zs):
     filenum : int
         The file number, used to generate the specific .Cam filename.
     xval : float
-        The x-coordinate value (same for all rows) to write to the file.
+        The x-coordinate value (same for all rows).
     ys : array-like
         Sequence of y-coordinate values.
     zs : array-like
-        Sequence of z-coordinate values (should match ys in length).
+        Sequence of z-coordinate values (must match ys in length).
 
-    Returns
-    -------
-    None
-        Writes output to disk; does not return anything.
+    Notes
+    -----
+    The header is formatted exactly for Aerotech reading compatibility:
+    - ;Filename: /full/path/to/file.Cam
+    - Number of points ####
+    - Master Units (PRIMARY)
+    - Slave Units (PRIMARY)
     """
     numstr = f"{int(filenum):04d}"
     numpts = f"{len(ys):04d}"
@@ -61,13 +62,14 @@ def make_cam_file(filename, filenum, xval, ys, zs):
     print(fname)
 
     with open(fname, 'w') as f:
-        f.write("Header line 1\n")  # Placeholder headers
-        f.write("Header line 2\n")
-        f.write("Header line 3\n")
-        f.write("Header line 4\n")
-        for y, z in zip(ys, zs):
-            f.write(f"{xval:.6f} {y:.6f} {z:.6f}\n")
+        # Correct Aerotech header
+        f.write(f";Filename: {fname}\n")
+        f.write(f"Number of points {numpts}\n")
+        f.write("Master Units (PRIMARY)\n")
+        f.write("Slave Units (PRIMARY)\n")
 
+        for idx, (y, z) in enumerate(zip(ys, zs), start=1):
+            f.write(f"{idx:04d} {y:.6f} {z:.6f}\n")
 
 
 def get_spindle_offsets(spindlecalfile,spindle):
