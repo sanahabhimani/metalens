@@ -291,42 +291,56 @@ def camming_files_combine(cut_type,path,spindle, files):
 
 
 def remove_lines(path, first_line, last_line, cuttype):
-    if os.path.isfile(path+'/lockfile.lock')==True:
-        print("lockfile present")
-        return 0
-    else: 
-        print('Lockfile not present')
-    print("Cleaning Directories")
-    masterpath = path + 'Master.txt'
+    """
+    Removes specified CAM files and updates the Master.txt file for a given range of cut lines.
+
+    Parameters
+    ----------
+    path : str
+        Directory path where Master.txt and CAM files are stored.
+    first_line : int
+        The first line number to keep (inclusive).
+    last_line : int
+        The last line number to keep (inclusive).
+    cuttype : str
+        String indicating the cut type ('Thick', 'Thin', 'Med') to build CAM filenames.
+
+    Notes
+    -----
+    - If a 'lockfile.lock' is present in the directory, the function exits without making changes.
+    - Only CAM files corresponding to line numbers within [first_line, last_line] are retained.
+    - All other CAM files outside the specified range are deleted.
+    - Master.txt is rewritten to only include lines within [first_line, last_line].
+    """
+    if os.path.isfile(os.path.join(path, 'lockfile.lock')):
+        print("Lockfile present")
+        return
+    else:
+        print("Lockfile not present")
+    
+    masterpath = os.path.join(path, 'Master.txt')
     masterarray = np.loadtxt(masterpath)
-    orig_num_lines = len(masterarray[:,0])
-    os.remove(masterpath)
-    nums = masterarray[first_line:last_line+1,0]
-    xs = masterarray[first_line:last_line+1,1]
-    ystarts = masterarray[first_line:last_line+1,2]
-    zs = masterarray[first_line:last_line+1,3]
-    yends = masterarray[first_line:last_line+1,4]
+    orig_num_lines = masterarray.shape[0]
     
-    mfileout = open(masterpath,'w')
+    # Rewrite Master.txt with selected lines
+    nums = masterarray[first_line:last_line + 1, 0]
+    xs = masterarray[first_line:last_line + 1, 1]
+    ystarts = masterarray[first_line:last_line + 1, 2]
+    zs = masterarray[first_line:last_line + 1, 3]
+    yends = masterarray[first_line:last_line + 1, 4]
     
-    for i in range(len(nums)):
-        linenum = "%04g"%nums[i]
-        mfileout.write(linenum + ' ' + str(xs[i]) + ' ' + str(ystarts[i]) + ' ' + str(zs[i]) + ' ' + str(yends[i]) + '\n')
-    mfileout.close()
+    with open(masterpath, 'w') as mfileout:
+        for num, x, ystart, z, yend in zip(nums, xs, ystarts, zs, yends):
+            linenum = f"{int(num):04d}"
+            mfileout.write(f"{linenum} {x} {ystart} {z} {yend}\n")
     
-    lowerlines = np.arange(first_line)
-    upperlines = np.arange(last_line+1,orig_num_lines+1)
+    # Remove old .Cam files outside the [first_line, last_line] range
+    lines_to_remove = list(range(0, first_line)) + list(range(last_line + 1, orig_num_lines))
     
-    for i in lowerlines:
-        campath = path + 'CutCam' + cuttype + "%04g"%i + '.Cam'
-        if os.path.exists(campath):
-            os.remove(campath)
-    for i in upperlines:
-        campath = path + 'CutCam' + cuttype + "%04g"%i + '.Cam'
-        if os.path.exists(campath):
-            os.remove(campath)
-    print("Done!")
-    return 1
+    for i in lines_to_remove:
+        camfile = os.path.join(path, f"CutCam{cuttype}{i:04d}.Cam")
+        if os.path.exists(camfile):
+            os.remove(camfile)
 
 
 def shiftXZ_alumina_filter(directory,spindle, ftype, Xshift, zshift_fixed, correction_zshift,wear_coeff,exposureval,lastlinecut,firstline,numlines):
