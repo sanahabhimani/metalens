@@ -87,12 +87,35 @@ def make_cam_file(filename, filenum, xval, ys, zs):
             f.write(f"{idx:04d} {y:.6f} {z:.6f}\n")
 
 
-def get_spindle_offsets(spindlecalfile,spindle):
-    file = np.loadtxt(spindlecalfile,dtype=str,skiprows=1)
-    calfileindex = np.where(file[:,0]==spindle)[0][0]
-    xoffset, yoffset, zoffset = file[calfileindex,1], file[calfileindex,2], file[calfileindex,3]
+def get_spindle_offsets(spindlecalfile, spindle):
+    """
+    Retrieves the x, y, and z offsets for a given spindle from a calibration file.
 
-    return float(xoffset), float(yoffset), float(zoffset)
+    Parameters
+    ----------
+    spindlecalfile : str or Path
+        Path to the calibration file (text format, with headers).
+    spindle : str
+        The spindle ID to look up in the file.
+
+    Returns
+    -------
+    tuple of float
+        The (xoffset, yoffset, zoffset) values for the given spindle.
+
+    Raises
+    ------
+    IndexError
+        If the spindle ID is not found in the file.
+    """
+    data = np.loadtxt(spindlecalfile, dtype=str, skiprows=1)
+    match_idx = np.where(data[:, 0] == spindle)[0][0]
+
+    xoffset = float(data[match_idx, 1])
+    yoffset = float(data[match_idx, 2])
+    zoffset = float(data[match_idx, 3])
+
+    return xoffset, yoffset, zoffset
 
 
 def YZ_Calibration_Fit(filepath,bladeradius,minind,maxind,y_guess,z_guess):
