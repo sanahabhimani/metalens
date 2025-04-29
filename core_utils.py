@@ -121,175 +121,166 @@ def YZ_Calibration_Fit(filepath,bladeradius,minind,maxind,y_guess,z_guess):
     return p2
 
 
-def wear_coeffiecient_update(path,spindle,cuttype,files):
-    testfile = np.loadtxt(path+spindle+'/'+files[0])
-    wearshifts = np.zeros(len(testfile[:,0]))
-    lines = np.zeros(len(testfile[:,0]))
+def wear_coefficient_update(path, spindle, cuttype, files):
+    """
+    Updates the wear coefficient by analyzing cumulative wear shift data across multiple cut files.
+
+    Parameters
+    ----------
+    path : str
+        Base path where the spindle and cut folders are located.
+    spindle : str
+        Spindle name (subfolder inside path).
+    cuttype : str
+        Cut type ('Thick', 'Thin', 'Med') used to find CutCamming folders.
+    files : list of str
+        List of filenames (relative to spindle folder) containing wear shift values.
+
+    Notes
+    -----
+    - Analyzes wear shift data and computes the updated wear coefficient (linear fit slope).
+    - Prints the updated wear coefficient.
+    - No plots are generated.
+    """
+    # Load initial wear shift data
+    testfile = np.loadtxt(os.path.join(path, spindle, files[0]))
+    num_lines = len(testfile[:, 0])
+    wearshifts = np.zeros(num_lines)
+    lines = np.zeros(num_lines)
     filtered_wearshifts = []
     filtered_lines = []
-    for i in range(len(files)):
-        tempdata = np.loadtxt(path+spindle+'/'+files[i])
-        #select the needed wearshiftvalues
-        tempind = tempdata[np.where(tempdata[:,1]!=tempdata[0,1]),0][0]
-        filtered_lines.append(tempind[0])
-        filtered_wearshifts.append(tempdata[int(tempind[0]),1])
-        for j in tempind:
-            wearshifts[int(j)]=tempdata[int(j),1]
-            lines[int(j)] = tempdata[int(j),0]
-    new_wearshifts = wearshifts
-    new_lines = lines
 
-    new_wearshifts[np.where(wearshifts==wearshifts[0])]=float('nan')
-    new_lines[np.where(wearshifts==wearshifts[0])]=float('nan')
+    for filename in files:
+        tempdata = np.loadtxt(os.path.join(path, spindle, filename))
+        # Select indices where the wear shift changes
+        change_indices = np.where(tempdata[:, 1] != tempdata[0, 1])[0]
 
-    plt.figure()
-    plt.plot(new_lines,new_wearshifts)
-    plt.show()
+        if len(change_indices) == 0:
+            continue  # No changes detected, skip this file
 
-    masterfile_actual = np.loadtxt(path+spindle+'/'+'CutCamming'+cuttype+'-ActualDiameter/'+'Master.txt')
-    masterfile_noshift = np.loadtxt(path+spindle+'/'+'CutCamming'+cuttype+'-Noshift/'+'Master.txt')
+        tempind = change_indices[0]
+        filtered_lines.append(tempind)
+        filtered_wearshifts.append(tempdata[tempind, 1])
 
-    first_index = np.where(masterfile_noshift[:,1]==masterfile_actual[0,1])[0][0]
-    last_index = np.where(masterfile_noshift[:,1]==masterfile_actual[-1,1])[0][0]
+        for j in change_indices:
+            wearshifts[int(j)] = tempdata[j, 1]
+            lines[int(j)] = tempdata[j, 0]
 
-    cumdist = np.zeros(len(master0file_noshift[:,0]))
+    new_wearshifts = np.copy(wearshifts)
+    new_lines = np.copy(lines)
 
-    smartdeltays = np.zeros(len(masterfile_noshift[:,0]))
+    # Mask lines where wearshift is still the initial value
+    new_wearshifts[new_wearshifts == wearshifts[0]] = np.nan
+    new_lines[wearshifts == wearshifts[0]] = np.nan
 
-    deltays = masterfile_actual[:,4]-masterfile_actual[:,2]
+    # Load master files
+    master_actual = np.loadtxt(os.path.join(path, spindle, f'CutCamming{cuttype}-ActualDiameter/Master.txt'))
+    master_noshift = np.loadtxt(os.path.join(path, spindle, f'CutCamming{cuttype}-Noshift/Master.txt'))
 
-    smartdeltays[np.where(np.isnan(new_wearshifts)==False)] = deltays[np.where(np.isnan(new_wearshifts)==False)]
+    first_index = np.where(master_noshift[:, 1] == master_actual[0, 1])[0][0]
+    last_index = np.where(master_noshift[:, 1] == master_actual[-1, 1])[0][0]
 
+    deltays = master_actual[:, 4] - master_actual[:, 2]
+    smartdeltays = np.zeros_like(master_noshift[:, 0])
+    valid_indices = ~np.isnan(new_wearshifts)
+
+    smartdeltays[valid_indices] = deltays[valid_indices]
     smartcumdist = np.cumsum(smartdeltays)
 
-    filtered_cumsum = []
+    filtered_cumsum = [smartcumdist[int(i)] for i in filtered_lines]
 
-    for i in filtered_lines:
-        filtered_cumsum.append(smartcumdist[int(i)])
-
-    plt.figure()
-    plt.plot(filtered_cumsum,filtered_wearshifts)
-    plt.show()
-
-    fitresults = spstats.linregress(filtered_cumsum,filtered_wearshifts)
-    print('Updated Wear Coefficient',fitresults[0])
-    return 1
+    # Linear regression
+    fitresults = spstats.linregress(filtered_cumsum, filtered_wearshifts)
+    print('Updated Wear Coefficient:', fitresults.slope)
 
 
+def camming_files_combine(cut_type, path, spindle, files):
+    """
+    Combines CAM files and Master.txt files from multiple directories into a single concatenated folder.
 
-def camming_files_combine(cut_type,path,spindle, files):
-        
-        master_all = []
+    Parameters
+    ----------
+    cut_type : str
+        String indicating the cut type ('Thick', 'Thin', 'Med').
+    path : str
+        Root directory where the spindle and camming folders are located.
+    spindle : str
+        Name or identifier for the spindle (subfolder inside path).
+    files : list of str
+        List of file paths containing CAM files and Master.txt to combine.
 
-        #Open up all the master files
-        f_temp = files[0]+'/Master.txt'
-        master1 = np.loadtxt(f_temp)
+    Notes
+    -----
+    - CAM files are renumbered continuously across multiple directories.
+    - Master.txt entries are updated accordingly.
+    - Headers in CAM files match Aerotech expected format.
+    - Works efficiently without recursion.
+    """
+    name_base = f'CutCam{cut_type}'
+    name_suffix = '.Cam'
 
-        for i in range(len(master1)):
-                master_all.append(master1[i])
-        
-        f_temp = files[1]+'/Master.txt'
-        master2 = np.loadtxt(f_temp)
+    while len(files) > 1:
+        new_folder = os.path.join(path, spindle, f'CutCamming{cut_type}-concat')
 
-        #define number of grooves
+        if not os.path.isdir(new_folder):
+            os.makedirs(new_folder)
+
+        # Load master files
+        master1 = np.loadtxt(os.path.join(files[0], 'Master.txt'))
+        master2 = np.loadtxt(os.path.join(files[1], 'Master.txt'))
+
+        master_all = list(master1)
+
         start = len(master1)
         add_on = len(master2)
 
-        name_base = '/CutCam'+ cut_type
-        name_sufix = '.Cam'
-        
-        #get ready to create new files
-        new_folder = path + spindle+'/'+'CutCamming'+cut_type+'-concat'
-        if not os.path.isdir(new_folder):
-                os.makedirs(new_folder)
+        # Copy CAM files from the first directory (no renumbering needed)
+        for entry in master1:
+            num = int(entry[0])
+            cam_old = os.path.join(files[0], f"{name_base}{num:04d}{name_suffix}")
+            cam_new = os.path.join(new_folder, f"{name_base}{num:04d}{name_suffix}")
 
-        master_new = []
+            temp = np.loadtxt(cam_old, skiprows=4)
+            numpts = len(temp)
 
-        #this for loop will make all the cuts for a particular groove before moving on to the next groove
+            with open(cam_new, 'w') as f:
+                f.write(f";Filename: {cam_old}\n")
+                f.write(f"Number of points {numpts:04d}\n")
+                f.write("Master Units (PRIMARY)\n")
+                f.write("Slave Units (PRIMARY)")
+                for idx, row in enumerate(temp, start=1):
+                    f.write(f"\n{idx:04d} {row[1]} {row[2]}")
 
-        file_num = 0
-        cam_counter = 0
-        
-        for i in range(start):
-                num_str_old = "%04g" %master1[i,0]
+        # Copy and renumber CAM files from the second directory
+        last_line_num = int(master1[-1, 0])
+        for idx, entry in enumerate(master2):
+            old_num = int(entry[0])
+            new_num = last_line_num + 1 + idx
 
-                name_old=files[0]+name_base+num_str_old+name_sufix
-                name_new = new_folder+name_base+num_str_old+name_sufix
+            cam_old = os.path.join(files[1], f"{name_base}{old_num:04d}{name_suffix}")
+            cam_new = os.path.join(new_folder, f"{name_base}{new_num:04d}{name_suffix}")
 
-                temp = np.loadtxt(name_old,skiprows=4)
+            temp = np.loadtxt(cam_old, skiprows=4)
+            numpts = len(temp)
 
-                numpts = str(len(temp))
-                while len(numpts)<4: numpts='0'+numpts
+            with open(cam_new, 'w') as f:
+                f.write(f";Filename: {cam_old}\n")
+                f.write(f"Number of points {numpts:04d}\n")
+                f.write("Master Units (PRIMARY)\n")
+                f.write("Slave Units (PRIMARY)")
+                for idx, row in enumerate(temp, start=1):
+                    f.write(f"\n{idx:04d} {row[1]} {row[2]}")
 
-                #write new cam file
-                f = open(name_new,'w')
+            # Update master file entry
+            master_temp = [new_num, entry[1], entry[2], entry[3], entry[4]]
+            master_all.append(master_temp)
 
-                f.write(';Filename: '+name_old+'\n'+'Number of points '+numpts+'\n'+'Master Units (PRIMARY)'+'\n'+'Slave Units (PRIMARY)')
-
-                for cam in range(len(temp)):
-                        index_str1 = str(cam+1)
-                        while len(index_str1 ) < 4: index_str1 ='0'+index_str1
-
-                        string_temp = '\n'+index_str1 +' '+str(temp[cam][1])+' '+str(temp[cam][2])
-                        f.write(string_temp)
-
-                f.close()
-
-        last_line_num = float(num_str_old)
-        for i in range(add_on):
-
-                num_str_old = "%04g" %master2[i,0]
-
-                while len(num_str_old) < 4: num_str_old='0'+num_str_old
-
-                name_old=files[1]+name_base+num_str_old+name_sufix
-
-                num_str_new = "%04g" %(last_line_num+1.0+i)
-
-                while len(num_str_new) < 4: num_str_new='0'+num_str_new
-
-                name_new = new_folder+name_base+num_str_new+name_sufix
-
-                temp = np.loadtxt(name_old,skiprows=4)
-
-                numpts = str(len(temp))
-                while len(numpts)<4: numpts='0'+numpts
-
-                #write new cam file
-                f = open(name_new,'w')
-
-                f.write(';Filename: '+name_new+'\n'+'Number of points '+numpts+'\n'+'Master Units (PRIMARY)'+'\n'+'Slave Units (PRIMARY)')
-
-                for cam in range(len(temp)):
-                        index_str1 = str(cam+1)
-                        while len(index_str1 ) < 4: index_str1 ='0'+index_str1
-
-                        string_temp = '\n'+index_str1 +' '+str(temp[cam][1])+' '+str(temp[cam][2])
-                        f.write(string_temp)
-
-                f.close()
-
-                #Add to new master file
-                master_temp = []
-                master_temp.append(int(num_str_new))
-                master_temp.append(master2[i][1])
-                master_temp.append(master2[i][2])
-                master_temp.append(master2[i][3])
-                master_temp.append(master2[i][4])
-                master_all.append(master_temp)
-                
-        #end for loop over different grooves
-
+        # Save the combined Master.txt
         master_all = np.array(master_all)
+        np.savetxt(os.path.join(new_folder, 'Master.txt'), master_all, fmt='%04g')
 
-        np.savetxt(new_folder+'/Master.txt',master_all, fmt='%04g')
-
-        if len(files) == 2: return
-
-        files = files[1:]
-        files[0] = new_folder
-
-        cam_file_combine(cut_type, files) 
+        # Move forward: new folder becomes the first input, drop files[0] and files[1]
+        files = [new_folder] + files[2:]
 
 
 def remove_lines(path, first_line, last_line, cuttype):
@@ -319,11 +310,11 @@ def remove_lines(path, first_line, last_line, cuttype):
         return
     else:
         print("Lockfile not present")
-    
+
     masterpath = os.path.join(path, 'Master.txt')
     masterarray = np.loadtxt(masterpath)
     orig_num_lines = masterarray.shape[0]
-    
+
     # Rewrite Master.txt with selected lines
     nums = masterarray[first_line:last_line + 1, 0]
     xs = masterarray[first_line:last_line + 1, 1]
