@@ -1,0 +1,312 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="y" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Core Utils Module &mdash; MetaLens 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=73e7982a"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="MetaLens documentation" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            MetaLens
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Core Utils Module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.YZ_Calibration_Fit"><code class="docutils literal notranslate"><span class="pre">YZ_Calibration_Fit()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.camming_files_combine"><code class="docutils literal notranslate"><span class="pre">camming_files_combine()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.check_metrology_probe"><code class="docutils literal notranslate"><span class="pre">check_metrology_probe()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.get_spindle_offsets"><code class="docutils literal notranslate"><span class="pre">get_spindle_offsets()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.make_cam_file"><code class="docutils literal notranslate"><span class="pre">make_cam_file()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.remove_lines"><code class="docutils literal notranslate"><span class="pre">remove_lines()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.shiftXZ_alumina_filter"><code class="docutils literal notranslate"><span class="pre">shiftXZ_alumina_filter()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.shiftXZ_nocomp"><code class="docutils literal notranslate"><span class="pre">shiftXZ_nocomp()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#core_utils.wear_coefficient_update"><code class="docutils literal notranslate"><span class="pre">wear_coefficient_update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MetaLens</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Core Utils Module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core_utils">
+<span id="core-utils-module"></span><h1>Core Utils Module<a class="headerlink" href="#module-core_utils" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.YZ_Calibration_Fit">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">YZ_Calibration_Fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bladeradius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_guess</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z_guess</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.YZ_Calibration_Fit" title="Link to this definition"></a></dt>
+<dd><p>Fits a circle to Y-Z metrology data using least-squares minimization,
+assuming a known blade radius. The fit estimates the center (y, z)
+of the circle traced by the probe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> (<em>str</em><em> or </em><em>Path</em>) -- Path to the CSV file containing the metrology probe data.</p></li>
+<li><p><strong>bladeradius</strong> (<em>float</em>) -- Radius of the blade (used as the fixed circle radius).</p></li>
+<li><p><strong>minind</strong> (<em>int</em>) -- Start index for the region of interest in the data.</p></li>
+<li><p><strong>maxind</strong> (<em>int</em>) -- End index for the region of interest in the data.</p></li>
+<li><p><strong>y_guess</strong> (<em>float</em>) -- Initial guess for the y-coordinate of the circle center.</p></li>
+<li><p><strong>z_guess</strong> (<em>float</em>) -- Initial guess for the z-coordinate of the circle center.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Best-fit [y_center, z_center] for the probe circle.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.camming_files_combine">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">camming_files_combine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cut_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spindle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">files</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.camming_files_combine" title="Link to this definition"></a></dt>
+<dd><p>Combines CAM files and Master.txt files from multiple directories into a single concatenated folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cut_type</strong> (<em>str</em>) -- String indicating the cut type ('Thick', 'Thin', 'Med').</p></li>
+<li><p><strong>path</strong> (<em>str</em>) -- Root directory where the spindle and camming folders are located.</p></li>
+<li><p><strong>spindle</strong> (<em>str</em>) -- Name or identifier for the spindle (subfolder inside path).</p></li>
+<li><p><strong>files</strong> (<em>list</em><em> of </em><em>str</em>) -- List of file paths containing CAM files and Master.txt to combine.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>CAM files are renumbered continuously across multiple directories.</p></li>
+<li><p>Master.txt entries are updated accordingly.</p></li>
+<li><p>Headers in CAM files match Aerotech expected format.</p></li>
+<li><p>Works efficiently without recursion.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.check_metrology_probe">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">check_metrology_probe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comport</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.check_metrology_probe" title="Link to this definition"></a></dt>
+<dd><p>Communicates with a metrology probe over a serial port and returns its response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>comport</strong> (<em>str</em>) -- The serial port to connect to (e.g., 'COM3' or '/dev/ttyUSB0').</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The decoded response from the probe after issuing the reset command.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.get_spindle_offsets">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">get_spindle_offsets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spindlecalfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spindle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.get_spindle_offsets" title="Link to this definition"></a></dt>
+<dd><p>Retrieves the x, y, and z offsets for a given spindle from a calibration file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spindlecalfile</strong> (<em>str</em><em> or </em><em>Path</em>) -- Path to the calibration file (text format, with headers).</p></li>
+<li><p><strong>spindle</strong> (<em>str</em>) -- The spindle ID to look up in the file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The (xoffset, yoffset, zoffset) values for the given spindle.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple of float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>IndexError</strong> -- If the spindle ID is not found in the file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.make_cam_file">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">make_cam_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenum</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.make_cam_file" title="Link to this definition"></a></dt>
+<dd><p>Creates an Aerotech-compatible .Cam file with x, y, and z position data for a given file number.</p>
+<p>The output filename is constructed by appending the 4-digit zero-padded <cite>filenum</cite>
+to the base <cite>filename</cite>, followed by the <cite>.Cam</cite> extension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>Path</em>) -- Base path (excluding file number and extension) where the .Cam file will be written.
+For example: Path('.../CutCamThin') will become CutCamThin0023.Cam, etc.</p></li>
+<li><p><strong>filenum</strong> (<em>int</em>) -- The file number, used to generate the specific .Cam filename.</p></li>
+<li><p><strong>xval</strong> (<em>float</em>) -- The x-coordinate value (same for all rows).</p></li>
+<li><p><strong>ys</strong> (<em>array-like</em>) -- Sequence of y-coordinate values.</p></li>
+<li><p><strong>zs</strong> (<em>array-like</em>) -- Sequence of z-coordinate values (must match ys in length).</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The header is formatted exactly for Aerotech reading compatibility:
+- ;Filename: /full/path/to/file.Cam
+- Number of points ####
+- Master Units (PRIMARY)
+- Slave Units (PRIMARY)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.remove_lines">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">remove_lines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first_line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cuttype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.remove_lines" title="Link to this definition"></a></dt>
+<dd><p>Removes specified CAM files and updates the Master.txt file for a given range of cut lines.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) -- Directory path where Master.txt and CAM files are stored.</p></li>
+<li><p><strong>first_line</strong> (<em>int</em>) -- The first line number to keep (inclusive).</p></li>
+<li><p><strong>last_line</strong> (<em>int</em>) -- The last line number to keep (inclusive).</p></li>
+<li><p><strong>cuttype</strong> (<em>str</em>) -- String indicating the cut type ('Thick', 'Thin', 'Med') to build CAM filenames.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>If a 'lockfile.lock' is present in the directory, the function exits without making changes.</p></li>
+<li><p>Only CAM files corresponding to line numbers within [first_line, last_line] are retained.</p></li>
+<li><p>All other CAM files outside the specified range are deleted.</p></li>
+<li><p>Master.txt is rewritten to only include lines within [first_line, last_line].</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.shiftXZ_alumina_filter">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">shiftXZ_alumina_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spindle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ftype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Xshift</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zshift_fixed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">correction_zshift</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wear_coeff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposureval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lastlinecut</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">firstline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numlines</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.shiftXZ_alumina_filter" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.shiftXZ_nocomp">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">shiftXZ_nocomp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ftype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xshift</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zshift</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.shiftXZ_nocomp" title="Link to this definition"></a></dt>
+<dd><p>Applies an x and z shift to all .Cam files and the corresponding Master.txt
+in a specified cut camming directory.</p>
+<section id="parameters">
+<h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>directory<span class="classifier">str or Path</span></dt><dd><p>The base directory containing the CutCamming folders.</p>
+</dd>
+<dt>ftype<span class="classifier">str</span></dt><dd><p>One of 'Thick', 'Thin', or 'Med' indicating which folder to process.</p>
+</dd>
+<dt>xshift<span class="classifier">float</span></dt><dd><p>The amount to shift x positions by.</p>
+</dd>
+<dt>zshift<span class="classifier">float</span></dt><dd><p>The amount to shift z positions by.</p>
+</dd>
+</dl>
+</section>
+<section id="raises">
+<h2>Raises:<a class="headerlink" href="#raises" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>ValueError</dt><dd><p>If ftype is not one of the allowed values.</p>
+</dd>
+<dt>RuntimeError</dt><dd><p>If a lockfile is present and operation should not proceed.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core_utils.wear_coefficient_update">
+<span class="sig-prename descclassname"><span class="pre">core_utils.</span></span><span class="sig-name descname"><span class="pre">wear_coefficient_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spindle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cuttype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">files</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core_utils.wear_coefficient_update" title="Link to this definition"></a></dt>
+<dd><p>Updates the wear coefficient by analyzing cumulative wear shift data across multiple cut files.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) -- Base path where the spindle and cut folders are located.</p></li>
+<li><p><strong>spindle</strong> (<em>str</em>) -- Spindle name (subfolder inside path).</p></li>
+<li><p><strong>cuttype</strong> (<em>str</em>) -- Cut type ('Thick', 'Thin', 'Med') used to find CutCamming folders.</p></li>
+<li><p><strong>files</strong> (<em>list</em><em> of </em><em>str</em>) -- List of filenames (relative to spindle folder) containing wear shift values.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Analyzes wear shift data and computes the updated wear coefficient (linear fit slope).</p></li>
+<li><p>Prints the updated wear coefficient.</p></li>
+<li><p>No plots are generated.</p></li>
+</ul>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="MetaLens documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Sanah A. Bhimani.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
