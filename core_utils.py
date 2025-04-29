@@ -118,42 +118,78 @@ def get_spindle_offsets(spindlecalfile, spindle):
     return xoffset, yoffset, zoffset
 
 
-def YZ_Calibration_Fit(filepath,bladeradius,minind,maxind,y_guess,z_guess):
-    minindex = minind
-    maxindex = maxind
-    pts =np.loadtxt(filepath, delimiter=',')
-    x = pts[minindex:maxindex,0]
-    y = pts[minindex:maxindex,1]
-    zin = pts[minindex:maxindex,2]
-    g = pts[minindex:maxindex,3]
-    z = zin + g
-    p0 = [y_guess, z_guess]#, bladeradius] #initial guess for y,z,r
-    rad = bladeradius
-    fitfunc = lambda p, y, z:np.sqrt((y-p[0])**2 + (z-p[1])**2)
-    errfunc = lambda p, y, z: fitfunc(p, y, z) - rad
-    pout,cov,infodict,mesg,ier = opt.leastsq(errfunc,p0, args=(y,z),full_output=1, ftol=1e-14,xtol=1e-14)
-    p2 = pout
+def YZ_Calibration_Fit(filepath, bladeradius, minind, maxind, y_guess, z_guess):
+    """
+    Fits a circle to Y-Z metrology data using least-squares minimization,
+    assuming a known blade radius. The fit estimates the center (y, z)
+    of the circle traced by the probe.
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to the CSV file containing the metrology probe data.
+    bladeradius : float
+        Radius of the blade (used as the fixed circle radius).
+    minind : int
+        Start index for the region of interest in the data.
+    maxind : int
+        End index for the region of interest in the data.
+    y_guess : float
+        Initial guess for the y-coordinate of the circle center.
+    z_guess : float
+        Initial guess for the z-coordinate of the circle center.
+
+    Returns
+    -------
+    list
+        Best-fit [y_center, z_center] for the probe circle.
+    """
+    # Load and slice the data
+    data = np.loadtxt(filepath, delimiter=',')
+    y = data[minind:maxind, 1]
+    z = data[minind:maxind, 2] + data[minind:maxind, 3]  # z + g compensation
+
+    # Initial guess and fit target
+    p0 = [y_guess, z_guess]
+    fitfunc = lambda p, y, z: np.sqrt((y - p[0])**2 + (z - p[1])**2)
+    errfunc = lambda p, y, z: fitfunc(p, y, z) - bladeradius
+
+    # Least squares fitting
+    result = opt.leastsq(
+        errfunc, p0, args=(y, z), full_output=True, ftol=1e-14, xtol=1e-14
+    )
+    p2, cov, infodict, mesg, ier = result
     resids = infodict['fvec']
-    print('The center in probe coordinates is [y,z] = ',p2)
-    fig = plt.figure(figsize=(8,15))
-    ax = fig.add_subplot(3,1,1)
-    ax.scatter(y,z, c='r')
-    circ = plt.Circle((p2[0],p2[1]), radius=rad, fill=True)
-    #ax.set_aspect('equal')
-    ax.add_patch(circ)
-    ax.set_title('Data points and best fit circle')
-    ax.set_xlim(min(y)-0.1,max(y)+0.1)
-    ax.set_ylim(min(z)-0.01,max(z)+0.01)
-    ax = fig.add_subplot(3,1,2)
-    ax.plot(resids)
-    ax.set_title('Residuals')
-    ax.set_xlabel('Point')
-    ax.set_ylabel('mm')
-    ax = fig.add_subplot(3,1,3)
-    ax.hist(resids)
-    ax.set_title('Residuals')
-    ax.set_xlabel('mm')
-    ax.set_ylabel('count')
+
+    print(f'The center in probe coordinates is [y, z] = {p2}')
+
+    # Plot results
+    fig, axs = plt.subplots(3, 1, figsize=(8, 15))
+
+    # Circle fit
+    axs[0].scatter(y, z, c='r', label='Data Points')
+    circ = plt.Circle((p2[0], p2[1]), radius=bladeradius, fill=False, color='blue', linestyle='--')
+    axs[0].add_patch(circ)
+    axs[0].set_title('Data points and best-fit circle')
+    axs[0].set_xlim(min(y) - 0.1, max(y) + 0.1)
+    axs[0].set_ylim(min(z) - 0.01, max(z) + 0.01)
+    axs[0].set_aspect('equal')
+    axs[0].legend()
+
+    # Residuals plot
+    axs[1].plot(resids, label='Residuals')
+    axs[1].set_title('Residuals')
+    axs[1].set_xlabel('Point Index')
+    axs[1].set_ylabel('Error (mm)')
+    axs[1].legend()
+
+    # Residuals histogram
+    axs[2].hist(resids, bins=20)
+    axs[2].set_title('Residuals Histogram')
+    axs[2].set_xlabel('Error (mm)')
+    axs[2].set_ylabel('Count')
+
+    plt.tight_layout()
     plt.show()
 
     return p2
