@@ -538,7 +538,7 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
 
 def shiftXZ_nocomp(directory, ftype, xshift, zshift):
     """
-    Applies an x and z shift to all .Cam files and the corresponding Master.txt 
+    Applies an x and z shift to all .Cam files and the corresponding Master.txt
     in a specified cut camming directory.
 
     Parameters:
