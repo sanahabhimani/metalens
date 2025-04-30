@@ -94,33 +94,54 @@ def get_cam_test_touch(path, spindle, cuttype, noshiftflag, cutdepth, touchdepth
     print('Done')
 
 
+def get_backup_test_touch(path, spindle, filename, pointnumber, wearshift):
+    """
+    Generates a temporary test touch file from a backup test file and logs the event.
 
-def get_backup_test_touch(path,spindle,filename,pointnumber,wearshift):
-    filepath = path+spindle+'/'+filename
-    testtouchesfile = np.loadtxt(filepath)
-    xval = testtouchesfile[pointnumber,1]
-    yval = testtouchesfile[pointnumber,2]
-    zval = testtouchesfile[pointnumber,3]
-    touchval = zval+wearshift
+    Parameters
+    ----------
+    path : str
+        Base directory containing the spindle and backup test files.
+    spindle : str
+        Identifier for the spindle (subfolder inside path).
+    filename : str
+        Name of the backup test file to read (e.g., 'backup_test_data.txt').
+    pointnumber : int
+        Index of the touch point to extract from the file.
+    wearshift : float
+        Wear correction shift to apply to the z-coordinate.
 
-    testtouchfolder = path+'TestTouches/'
-    testtouchlog = testtouchfolder+'TestTouchLog.txt'
-    testtouchfile = testtouchfolder+'TestTouch.txt'
+    Notes
+    -----
+    Writes a log entry and a single-line temporary test file into the `TestTouches/` directory.
+    """
+    filepath = os.path.join(path, spindle, filename)
+    testtouches = np.loadtxt(filepath)
 
-    if os.path.isdir(testtouchfolder)==False:
-        os.mkdir(testtouchfolder)
-    testtouchlogfile = open(testtouchlog,'a')
-    testtouchlogfile.write('"'+spindle +'" '+str(xval)+' '+str(yval)+' '+str(touchval)+' ' +str(time.ctime())+'\n')
-    testtouchlogfile.close()
-    print('Appending Test Touch Log File:'+' "'+spindle +'" '+str(xval)+' '+str(yval)+' '+str(touchval)+' ' +str(time.ctime()))
+    xval = testtouches[pointnumber, 1]
+    yval = testtouches[pointnumber, 2]
+    zval = testtouches[pointnumber, 3]
+    touchval = zval + wearshift
 
+    testtouchfolder = os.path.join(path, 'TestTouches')
+    os.makedirs(testtouchfolder, exist_ok=True)
+
+    testtouchlog = os.path.join(testtouchfolder, 'TestTouchLog.txt')
+    testtouchfile = os.path.join(testtouchfolder, 'TestTouch.txt')
+
+    timestamp = time.ctime()
+    log_entry = f'"{spindle}" {xval} {yval} {touchval} {timestamp}\n'
+
+    # Append to log file
+    with open(testtouchlog, 'a') as logfile:
+        logfile.write(log_entry)
+    print(f"Appending Test Touch Log File: {log_entry.strip()}")
+
+    # Write temporary touch file
     print('Making Temp Test Touch File')
-    print('Done')
+    with open(testtouchfile, 'w') as tempfile:
+        tempfile.write(f'"{spindle}" {xval} {yval} {touchval}')
 
-    testtouchtempfile = open(testtouchfile,'w')
-    testtouchtempfile.write('"'+spindle +'" '+str(xval)+' '+str(yval)+' '+str(touchval))
-    testtouchtempfile.close()
-    return 1
 
 def gen_test_touch_points(path,calfilepath,testtouchmetfile,spindle,touchdepth, bladeradius):
     metdata = np.loadtxt(path+spindle+'/'+testtouchmetfile,delimiter=',')
