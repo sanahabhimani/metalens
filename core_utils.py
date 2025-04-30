@@ -64,7 +64,7 @@ def make_cam_file(filename, filenum, xval, ys, zs):
 
     Notes
     -----
-    The header is formatted exactly for Aerotech reading compatibility:
+    The header is formatted exactly for Aerotech reading compatibility
     - Filename: /full/path/to/file.Cam
     - Number of points ####
     - Master Units (PRIMARY)
