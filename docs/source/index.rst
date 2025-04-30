@@ -16,3 +16,4 @@ documentation for details.
    :caption: Contents:
 
    core_utils
+   test_touch_utils
