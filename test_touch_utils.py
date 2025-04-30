@@ -143,22 +143,48 @@ def get_backup_test_touch(path, spindle, filename, pointnumber, wearshift):
         tempfile.write(f'"{spindle}" {xval} {yval} {touchval}')
 
 
-def gen_test_touch_points(path,calfilepath,testtouchmetfile,spindle,touchdepth, bladeradius):
-    metdata = np.loadtxt(path+spindle+'/'+testtouchmetfile,delimiter=',')
-    xdata = metdata[:,0]
-    ydata = metdata[:,1]
-    zdata = metdata[:,2]
-    probedata = metdata[:,3]
-    xoffset,yoffset,zoffset = get_spindle_offsets(calfilepath,spindle)
-    xtouch = xdata+xoffset
-    ytouch = ydata+yoffset
-    ztouch = (zdata+probedata)-zoffset+bladeradius-0.5+touchdepth
-    f = open(path+'/'+spindle+'/'+spindle+'_Test_Touches.txt','w')
-    for i in range(len(xtouch)):
-        numstr = "%04g" %i
-        f.write(numstr + ' ' + str(xtouch[i]) + ' ' + str(ytouch[i]) + ' ' + str(ztouch[i])+'\n')
-    f.close()
-    return 1
+def gen_test_touch_points(path, calfilepath, testtouchmetfile, spindle, touchdepth, bladeradius):
+    """
+    Generates test touch points by combining metrology data and spindle calibration offsets.
+
+    Parameters
+    ----------
+    path : str
+        Base directory containing spindle folders and test files.
+    calfilepath : str
+        Path to the spindle calibration file used for offset corrections.
+    testtouchmetfile : str
+        Filename containing test touch metrology data (CSV format with 4 columns).
+    spindle : str
+        Spindle identifier (used as a folder name and filename prefix).
+    touchdepth : float
+        Additional depth correction to apply to Z.
+    bladeradius : float
+        Radius of the blade used to calculate actual touch position.
+
+    Notes
+    -----
+    Writes a file named `<spindle>_Test_Touches.txt` into the spindle's folder,
+    with lines in the format:
+    line_number x y z
+    """
+    # Load metrology data
+    metdata = np.loadtxt(os.path.join(path, spindle, testtouchmetfile), delimiter=',')
+    xdata, ydata, zdata, probedata = metdata[:, 0], metdata[:, 1], metdata[:, 2], metdata[:, 3]
+
+    # Get spindle offsets
+    xoffset, yoffset, zoffset = get_spindle_offsets(calfilepath, spindle)
+
+    # Apply offsets and compute touch positions
+    xtouch = xdata + xoffset
+    ytouch = ydata + yoffset
+    ztouch = (zdata + probedata) - zoffset + bladeradius - 0.5 + touchdepth
+
+    # Write to output file
+    output_path = os.path.join(path, spindle, f"{spindle}_Test_Touches.txt")
+    with open(output_path, 'w') as f:
+        for i, (x, y, z) in enumerate(zip(xtouch, ytouch, ztouch)):
+            f.write(f"{i:04d} {x} {y} {z}\n")
 
 
 def get_cam_test_touch_pick_ypoint(path,spindle,cuttype,noshiftflag,cutdepth,touchdepth,linenumber,wearshift,ypoint):
