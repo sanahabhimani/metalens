@@ -400,158 +400,140 @@ def remove_lines(path, first_line, last_line, cuttype):
         for num, x, ystart, z, yend in zip(nums, xs, ystarts, zs, yends):
             linenum = f"{int(num):04d}"
             mfileout.write(f"{linenum} {x} {ystart} {z} {yend}\n")
-    
+
     # Remove old .Cam files outside the [first_line, last_line] range
     lines_to_remove = list(range(0, first_line)) + list(range(last_line + 1, orig_num_lines))
-    
+
     for i in lines_to_remove:
         camfile = os.path.join(path, f"CutCam{cuttype}{i:04d}.Cam")
         if os.path.exists(camfile):
             os.remove(camfile)
 
 
-def shiftXZ_alumina_filter(directory,spindle, ftype, Xshift, zshift_fixed, correction_zshift,wear_coeff,exposureval,lastlinecut,firstline,numlines):
-    if ftype == 'Thick':
-        subfolder = 'CutCammingThick'
-        camname = directory+spindle+'/' + subfolder + '/CutCamThick'
-        cin = directory+'/'+spindle+'/'  + subfolder + '-Noshift/CutCamThick'
-    elif ftype == 'Thin':
-        subfolder = 'CutCammingThin'
-        camname = directory+spindle+'/'  + subfolder + '/CutCamThin'
-        cin = directory+'/'+spindle+'/'  + subfolder + '-Noshift/CutCamThin'
-    elif ftype == 'Med':
-        subfolder = 'CutCammingMed'
-        camname = directory+spindle+'/'  + subfolder + '/CutCamMed'
-        cin = directory+spindle+'/'  + subfolder + '-Noshift/CutCamMed'
+def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, correction_zshift,
+                           wear_coeff, exposureval, lastlinecut, firstline, numlines):
+    """
+    Applies X and Z shift corrections to CAM files and updates Master.txt files
+    for alumina filter processing, accounting for cumulative blade wear and exposure.
 
-    masterfilein = directory+spindle+'/'  + subfolder + '-Noshift/Master.txt'
-    masterfileout = directory+spindle+'/'  + subfolder + '/Master.txt'
+    Parameters
+    ----------
+    directory : str
+        Root directory containing spindle folders.
+    spindle : str
+        Spindle identifier (subfolder within the root directory).
+    ftype : str
+        Type of cut ('Thick', 'Thin', or 'Med').
+    Xshift : float
+        Fixed shift to apply to x-coordinates.
+    zshift_fixed : float
+        Fixed base shift to apply to z-coordinates.
+    correction_zshift : float
+        Additional correction shift to apply to z-coordinates.
+    wear_coeff : float
+        Blade wear coefficient used to calculate wear-based z-shifts.
+    exposureval : float
+        Maximum allowable cumulative exposure before stopping blade use.
+    lastlinecut : int
+        Line number of the last cut in the previous session.
+    firstline : int
+        First line number to process in this run.
+    numlines : int
+        Number of lines to cut/process in this run.
+    """
+    # Define folders and file paths
+    subfolder = f'CutCamming{ftype}'
+    camname = f"{directory}{spindle}/{subfolder}/CutCam{ftype}"
+    cin = f"{directory}{spindle}/{subfolder}-Noshift/CutCam{ftype}"
+    masterfilein = f"{directory}{spindle}/{subfolder}-Noshift/Master.txt"
+    masterfilein_actual = f"{directory}{spindle}/{subfolder}-ActualDiameter/Master.txt"
+    lockfile = f"{directory}{spindle}/{subfolder}/lockfile.lock"
 
-    print(masterfilein)
-    print('prinintg')
-
-    masterfilein_actual = directory+spindle+'/'  + subfolder + '-ActualDiameter/Master.txt'
-
-    if os.path.isfile(directory+spindle+'/'  + subfolder+'/lockfile.lock')==True:
-        print("lockfile present")
-        #return 0
+    if os.path.isfile(lockfile):
+        print("Lockfile present")
+        return
     else:
-        print('Lockfile not present')
+        print("Lockfile not present")
 
-    #load the master file
+    # Load Master and Actual Master data
     mfile = np.loadtxt(masterfilein)
-    nums = mfile[:,0]
-    xs = mfile[:,1]
-    ys = mfile[:,2]
-    zs = mfile[:,3]
-    ystops = mfile[:,4]
-
+    xs, ys, zs, ystops = mfile[:, 1], mfile[:, 2], mfile[:, 3], mfile[:, 4]
     mfile_actual = np.loadtxt(masterfilein_actual)
-    nums_actual = mfile_actual[:,0]
-    xs_actual = mfile_actual[:,1]
-    ys_actual = mfile_actual[:,2]
-    zs_actual = mfile_actual[:,3]
-    ystops_actual = mfile_actual[:,4]
+    xs_actual, ys_actual, ystops_actual = mfile_actual[:, 1], mfile_actual[:, 2], mfile_actual[:, 4]
 
-    #calculate the distance cut for each line
+    # Compute deltays in actual data and insert into correct region
     deltays = ystops_actual - ys_actual
+    first_index = np.where(xs == xs_actual[0])[0][0]
+    last_index = np.where(xs == xs_actual[-1])[0][0]
+    deltays_mod = np.zeros_like(zs)
+    deltays_mod[first_index:last_index + 1] = deltays
 
-    first_index = np.where(xs==xs_actual[0])[0]
-    last_index = np.where(xs==xs_actual[-1])[0]
+    # Compute cumulative wear shift
+    wearshiftsarray = deltays_mod * wear_coeff
+    cum_wearshift = np.zeros_like(wearshiftsarray)
 
-    deltays_mod = np.zeros(len(zs))
-    print(len(zs))
-
-    deltays_mod[first_index[0]:last_index[0]+1] = deltays
-
-    if ftype =='Thick':
-        bladewearfactor = wear_coeff
-        exposure = exposureval
-    elif ftype == 'Thin':
-        bladewearfactor = wear_coeff
-        exposure = exposureval
-
-    wearshiftsarray = deltays_mod*bladewearfactor
-    cum_wearshift = np.zeros(len(wearshiftsarray))
-
-    if lastlinecut==0:
-        init_exp=0
+    # Resume from previous exposure
+    if lastlinecut == 0:
+        init_exp = 0
     else:
-        oldshiftsstring = directory+spindle+'/' +'WearshiftValues_'+ftype+'.txt'
-        oldshifts = np.loadtxt(oldshiftsstring)
-        init_exp = oldshifts[lastlinecut,1]
-        renameshiftsstring = 'WearshiftValues_'+ftype+'_upto'+str(lastlinecut)+'.txt'
-        os.rename(oldshiftsstring,directory+spindle+'/' +renameshiftsstring)
-        if os.path.isdir(directory+spindle+'/' +subfolder)==True:
-            os.rename(directory+spindle+'/' +subfolder,directory+'/'+spindle+'/' +subfolder+'_upto'+str(lastlinecut))
+        oldshifts_path = f"{directory}{spindle}/WearshiftValues_{ftype}.txt"
+        oldshifts = np.loadtxt(oldshifts_path)
+        init_exp = oldshifts[lastlinecut, 1]
 
+        os.rename(oldshifts_path, f"{directory}{spindle}/WearshiftValues_{ftype}_upto{lastlinecut}.txt")
+        current_dir = f"{directory}{spindle}/{subfolder}"
+        if os.path.isdir(current_dir):
+            os.rename(current_dir, f"{current_dir}_upto{lastlinecut}")
+
+    # Determine exposure-based stopping point
     s = init_exp
-
-    lines2cut = np.arange(firstline,firstline+numlines)
-
+    lines2cut = np.arange(firstline, firstline + numlines)
     for val in lines2cut:
-        #exposure check
-
-        if abs(s)>=exposure:
-            print('Blade Limit Line',val)
-            lastline = val
+        if abs(s) >= exposureval:
+            print("Blade Limit Line", val)
             break
-
         cum_wearshift[val] = s
         s += wearshiftsarray[val]
 
+    # Plot wear shift profile
     plt.figure()
     plt.plot(cum_wearshift)
     plt.xlabel('Line Number')
     plt.ylabel('Z Shift (mm)')
+    plt.title('Cumulative Wear Shift')
     plt.show()
-    #zsout_actual = zs_actual + zshift + cum_wearshift
-    #xsout_actual = xs_actual + Xshift
 
-    print("Shifting Lines Now")
-
-    zsout = zs + zshift_fixed +cum_wearshift+correction_zshift
+    # Apply shifts
+    zsout = zs + zshift_fixed + cum_wearshift + correction_zshift
     xsout = xs + Xshift
 
-    wearfilestr = directory+spindle+'/' +'WearshiftValues_'+ftype+'.txt'
+    # Save wear shift values
+    wearfile_path = f"{directory}{spindle}/WearshiftValues_{ftype}.txt"
+    with open(wearfile_path, 'w') as wearfile:
+        for i, shift in enumerate(cum_wearshift):
+            linenum = f"{i:04d}"
+            wearfile.write(f"{linenum} {shift + correction_zshift}\n")
 
-    wearfileout = open(wearfilestr,'w')
+    # Update CAM files and Master.txt
+    masterfiledir = f"{directory}{spindle}/{subfolder}/"
+    if os.path.isdir(masterfiledir):
+        os.rename(masterfiledir, f"{masterfiledir.rstrip('/')}_UpToLine_{lastlinecut}")
+    os.makedirs(masterfiledir, exist_ok=True)
 
-    for i in range(len(cum_wearshift)):
-        linenumber = "%04g"%i
-        wearfileout.write(str(linenumber) + ' ' + str(cum_wearshift[i]+correction_zshift) + ' ' +'\n')
-    wearfileout.close()
+    masterfileout = f"{masterfiledir}/Master.txt"
+    with open(masterfileout, 'w') as mfileout:
+        for i, num in enumerate(mfile[:, 0]):
+            linenum = f"{int(num):04d}"
+            fname = f"{cin}{linenum}.Cam"
+            cname = f"{directory}{spindle}/{subfolder}/CutCam{ftype}"
+            pts = np.loadtxt(fname, skiprows=4)
+            yscam = pts[:, 1]
+            zscam = pts[:, 2] + zshift_fixed + cum_wearshift[i] + correction_zshift
 
-    #open the new masterfile
-    #mfileout = open(masterfileout,'w')
+            make_cam_file(Path(cname), num, xs[i], yscam, zscam)
+            mfileout.write(f"{linenum} {xsout[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
 
-    #iterate over each of the filenumbers
-
-    masterfileout = directory+spindle+'/'  + subfolder  + '/Master.txt'
-    masterfiledir = directory+spindle+'/'  + subfolder  + '/'
-    if os.path.isdir(masterfiledir)==False:
-        os.makedirs(masterfiledir)
-    else:
-        os.rename(masterfiledir,directory+spindle+'/'  + subfolder+'_UpToLine_'+str(lastlinecut))
-        os.makedirs(masterfiledir)
-    mfileout = open(masterfileout,'w')
-
-    for i,num in enumerate(nums):
-        linenum = "%04g"%num
-        fname = cin + linenum + '.Cam'#generate the input camfile name
-        #generate output camfile name
-        cname = directory+spindle+'/'  + subfolder+'/CutCam'+ftype
-        pts = np.loadtxt(fname,skiprows=4)
-        yscam = pts[:,1]
-        zscam = pts[:,2] + zshift_fixed + cum_wearshift[i]+correction_zshift
-        make_cam_file(cname,num,xs[i],yscam,zscam) #make the new camfile with
-                                                        #the shifted z values
-
-        mfileout.write(linenum + ' ' + str(xsout[i]) + ' ' + str(ys[i]) + ' '+ str(zsout[i]) + ' ' + str(ystops[i]) + '\n')
-
-    mfileout.close()
-    remove_lines(directory+spindle+'/' + subfolder+'/',firstline,firstline+numlines-1,ftype)
-    return 1
+    remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
 
 
 def shiftXZ_nocomp(directory, ftype, xshift, zshift):
