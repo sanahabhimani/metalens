@@ -65,7 +65,7 @@ def make_cam_file(filename, filenum, xval, ys, zs):
     Notes
     -----
     The header is formatted exactly for Aerotech reading compatibility:
-    - ;Filename: /full/path/to/file.Cam
+    - Filename: /full/path/to/file.Cam
     - Number of points ####
     - Master Units (PRIMARY)
     - Slave Units (PRIMARY)
@@ -541,7 +541,7 @@ def shiftXZ_nocomp(directory, ftype, xshift, zshift):
     Applies an x and z shift to all .Cam files and the corresponding Master.txt
     in a specified cut camming directory.
 
-    Parameters:
+    Parameters
     -----------
     directory : str or Path
         The base directory containing the CutCamming folders.
@@ -552,7 +552,7 @@ def shiftXZ_nocomp(directory, ftype, xshift, zshift):
     zshift : float
         The amount to shift z positions by.
 
-    Raises:
+    Raises
     -------
     ValueError
         If ftype is not one of the allowed values.
