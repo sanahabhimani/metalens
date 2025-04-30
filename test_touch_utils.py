@@ -11,7 +11,22 @@ from matplotlib import cm
 
 
 def find_touch_depth(bladeradius, touchlength):
-    return bladeradius*(1-np.cos(np.arcsin(touchlength/(2*bladeradius))))
+    """
+    Calculates the touch depth for a blade based on the touch length.
+
+    Parameters
+    ----------
+    bladeradius : float
+        Radius of the blade (in mm or same units as touchlength).
+    touchlength : float
+        Length of the contact (chord) between the blade and the surface.
+
+    Returns
+    -------
+    float
+        The depth of the touch (vertical distance from the blade's edge to the chord line).
+    """
+    return bladeradius * (1 - np.cos(np.arcsin(touchlength / (2 * bladeradius))))
 
 
 def get_cam_test_touch(path,spindle,cuttype,noshiftflag,cutdepth,touchdepth,linenumber, wearshift):
