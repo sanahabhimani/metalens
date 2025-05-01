@@ -110,6 +110,29 @@ def make_cam_file(filename, filenum, xval, ys, zs):
             f.write(f"{idx:04d} {y:.6f} {z:.6f}\n")
 
 
+def _check_lockfile(path):
+    """
+    Checks whether a 'lockfile.lock' file is present in the given directory.
+
+    Parameters
+    ----------
+    path : str or Path
+        Directory to check for the presence of the lockfile.
+
+    Returns
+    -------
+    bool
+        True if the lockfile is present, False otherwise.
+    """
+    lockfile = Path(path) / 'lockfile.lock'
+    if lockfile.exists():
+        print(f"Lockfile present in {lockfile.parent}")
+        return True
+    else:
+        print(f"No lockfile in {lockfile.parent}")
+        return False
+
+
 def _write_cam_set(
     cutpath,
     thickness_label,
