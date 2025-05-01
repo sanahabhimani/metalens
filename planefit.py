@@ -240,7 +240,7 @@ def generate_planar_cut_files(
 
     # Select path and values
     cam_args = {
-        'cutpath'={'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[cuttype],
+        'cutpath':{'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[cuttype],
         'thickness_label':cuttype,
         'p':p,
         'plane_func':F,
