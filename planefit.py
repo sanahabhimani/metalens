@@ -169,10 +169,10 @@ def generate_planar_cut_files(
             os.makedirs(path)
 
     # 3) Load cutting parameters + spindle offsets
-    thick_depth, med_depth, thin_depth, cutpitch = get_cut_parameters(
+    thick_depth, med_depth, thin_depth, cutpitch = cu.get_cut_parameters(
         os.path.join(pathname, cutparamsfile)
     )
-    newxoffset, newyoffset, newzoffset = get_spindle_offsets(
+    newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(
         calibrationfilepath,
         spindle
     )
@@ -273,7 +273,7 @@ def _write_cam_set(
 
             # E.g. "CutCamThick", "CutCamThin", etc.
             fname_prefix = os.path.join(cutpath, f'CutCam{thickness_label}')
-            make_cam_file(fname_prefix, j, xx + Xoffset, ys + Yoffset, zs)
+            cu.make_cam_file(fname_prefix, j, xx + Xoffset, ys + Yoffset, zs)
 
             linenum = f"{j:04d}"
             masterfile.write(
