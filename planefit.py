@@ -203,7 +203,7 @@ def generate_planar_cut_files(
     }
     offsets = (newxoffset, newyoffset, newzoffset)
     pitch = cutpitch
-    Yres = 0.500
+    yres = 0.500
     measrad = 0.500
 
     print(f"Using plane parameters: {p}")
@@ -222,14 +222,14 @@ def generate_planar_cut_files(
             if abs(dx) > radius:
                 return np.array([])
             dy = np.sqrt(radius**2 - dx**2)
-            return np.arange(ycenter - dy, ycenter + dy + 0.0001, Yres)
+            return np.arange(ycenter - dy, ycenter + dy + 0.0001, yres)
 
     elif geometry == 'rectangular':
         if ystart is None or yend is None:
             raise ValueError("ystart and yend must be provided for rectangular geometry")
 
         def get_ys(xx):
-            return np.arange(ystart, yend, Yres)
+            return np.arange(ystart, yend, yres)
 
     else:
         raise ValueError("geometry must be 'circular' or 'rectangular'")
