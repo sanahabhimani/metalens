@@ -8,23 +8,6 @@ from scipy import optimize as opt
 import core_utils as cu
 
 
-def make_cam_file(filename, filenum, xval,ys,zs):
-    #code to automate the making of camfiles
-    numstr = "%04g" % (filenum)
-    numpts = "%04g" %(len(ys))
-    fname = filename + numstr + '.Cam'
-    print(fname)
-    f = open(fname,'w')
-    f.write(';Filename: '+fname + '\n')
-    f.write('Number of points ' + numpts + '\n')
-    f.write('Master Units (PRIMARY)'+ '\n')
-    f.write('Slave Units (PRIMARY)'+ '\n')
-    for i,y in enumerate(ys):
-        num = "%04g" % (i+1)
-        f.write(num + ' ' + str(ys[i]) + ' ' + str(zs[i]) + '\n')
-
-    return 1
-
 
 def get_spindle_offsets(spindlecalfile,spindle):
     file = np.loadtxt(spindlecalfile,dtype=str,skiprows=1)
