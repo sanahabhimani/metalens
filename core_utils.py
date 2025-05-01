@@ -137,9 +137,9 @@ def _write_cam_set(
     cutpath,
     thickness_label,
     p, plane_func,
-    Xstart, Xend,
+    xstart, xend,
     get_ys,
-    pitch, Yres,
+    pitch, yres,
     offsets,
     bladeradius, depth, measrad
 ):
@@ -157,14 +157,14 @@ def _write_cam_set(
         Coefficients of the plane function.
     plane_func : callable
         Function representing the planar fit (e.g., a lambda or poly2d).
-    Xstart, Xend : float
+    xstart, xend : float
         Ranges for x positions.
     get_ys : callable
         Function that takes a single x value and returns a 1D array of corresponding y values
         for that scanline (used for circular or rectangular geometry).
     pitch : float
         Step size in x-direction.
-    Yres : float
+    yres : float
         Step size in y-direction (kept for reference, not actively used here).
     offsets : tuple of float
         (Xoffset, Yoffset, Zoffset) to apply to the generated points.
@@ -182,7 +182,7 @@ def _write_cam_set(
     cutpath.mkdir(parents=True, exist_ok=True)
 
     Xoffset, Yoffset, Zoffset = offsets
-    xs = np.arange(Xstart, Xend, pitch)
+    xs = np.arange(xstart, xend, pitch)
 
     master_file_path = cutpath / 'Master.txt'
     with open(master_file_path, 'w') as masterfile:
