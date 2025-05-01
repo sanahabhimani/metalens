@@ -110,6 +110,68 @@ def make_cam_file(filename, filenum, xval, ys, zs):
             f.write(f"{idx:04d} {y:.6f} {z:.6f}\n")
 
 
+def _write_cam_set(
+    cutpath,
+    thickness_label,
+    p, plane_func,
+    Xstart, Xend, Ystart, Yend,
+    pitch, Yres,
+    offsets,
+    bladeradius, depth, measrad
+):
+    """
+    Writes out Master.txt and CAM files for a given thickness type based on a planar fit.
+
+    Parameters
+    ----------
+    cutpath : str or Path
+        Directory where files will be written.
+    thickness_label : str
+        Label for the CAM file prefix ('Thick', 'Thin', etc.).
+    p : list or tuple
+        Coefficients of the plane function.
+    plane_func : callable
+        Function representing the planar fit (e.g., a lambda or poly2d).
+    Xstart, Xend, Ystart, Yend : float
+        Ranges for x and y positions.
+    pitch : float
+        Step size in x-direction.
+    Yres : float
+        Step size in y-direction.
+    offsets : tuple of float
+        (Xoffset, Yoffset, Zoffset) to apply to the generated points.
+    bladeradius : float
+        Radius of the blade.
+    depth : float
+        Desired cut depth.
+    measrad : float
+        Radius of probe tip or other measurement correction.
+    """
+    cutpath = Path(cutpath)
+    cutpath.mkdir(parents=True, exist_ok=True)
+
+    Xoffset, Yoffset, Zoffset = offsets
+    xs = np.arange(Xstart, Xend, pitch)
+
+    master_file_path = cutpath / 'Master.txt'
+    with open(master_file_path, 'w') as masterfile:
+        for j, xx in enumerate(xs):
+            ys = np.arange(Ystart, Yend, Yres)
+            zs = np.zeros(len(ys))
+            for i, yy in enumerate(ys):
+                zcalc = plane_func(xx, yy, *p)
+                zs[i] = zcalc - Zoffset + bladeradius - depth - measrad
+
+            fname_prefix = cutpath / f"CutCam{thickness_label}"
+            make_cam_file(fname_prefix, j, xx + Xoffset, ys + Yoffset, zs)
+
+            linenum = f"{j:04d}"
+            masterfile.write(
+                f"{linenum} {xx + Xoffset} {ys[0] + Yoffset} {zs[0]} {ys[-1] + Yoffset}\n"
+            )
+
+
+
 def get_spindle_offsets(spindlecalfile, spindle):
     """
     Retrieves the x, y, and z offsets for a given spindle from a calibration file.

@@ -204,7 +204,7 @@ def generate_planar_cut_files(
         return -a*x - b*y - c
 
     if flag == 'Thick':
-        _write_cam_set(
+        cu._write_cam_set(
             cutpaththick, 'Thick', p, F,
             Xstart, Xend, Ystart, Yend,
             pitch, Yres,
@@ -212,7 +212,7 @@ def generate_planar_cut_files(
             bladeradius, Thickdepth, measrad
         )
     elif flag == 'Thin':
-        _write_cam_set(
+       cu._write_cam_set(
             cutpaththin, 'Thin', p, F,
             Xstart, Xend, Ystart, Yend,
             pitch, Yres,
@@ -220,7 +220,7 @@ def generate_planar_cut_files(
             bladeradius, Thindepth, measrad
         )
     elif flag == 'Med':
-        _write_cam_set(
+       cu._write_cam_set(
             cutpathmed, 'Med', p, F,
             Xstart, Xend, Ystart, Yend,
             pitch, Yres,
@@ -245,40 +245,6 @@ def _check_lockfile(path):
         print(f"No lockfile in {path}")
         return False
 
-
-def _write_cam_set(
-    cutpath,
-    thickness_label,
-    p, plane_func,
-    Xstart, Xend, Ystart, Yend,
-    pitch, Yres,
-    offsets,
-    bladeradius, depth, measrad
-):
-    """
-    Write out the 'Master.txt' and all the sub-cam files for a given thickness type.
-    """
-    (Xoffset, Yoffset, Zoffset) = offsets
-    xs = np.arange(Xstart, Xend, pitch)
-
-    master_file_path = os.path.join(cutpath, 'Master.txt')
-    with open(master_file_path, 'w') as masterfile:
-        for j, xx in enumerate(xs):
-            ys = np.arange(Ystart, Yend, Yres)
-            zs = np.zeros(len(ys))
-            for i, yy in enumerate(ys):
-                zcalc = plane_func(xx, yy, *p)
-                # Apply offsets, blade radius, measured radius, depth, etc.
-                zs[i] = zcalc - Zoffset + bladeradius - depth - measrad
-
-            # E.g. "CutCamThick", "CutCamThin", etc.
-            fname_prefix = os.path.join(cutpath, f'CutCam{thickness_label}')
-            cu.make_cam_file(fname_prefix, j, xx + Xoffset, ys + Yoffset, zs)
-
-            linenum = f"{j:04d}"
-            masterfile.write(
-                f"{linenum} {xx + Xoffset} {ys[0] + Yoffset} {zs[0]} {ys[-1] + Yoffset}\n"
-            )
 
 '''
 ### How to call functions ###
