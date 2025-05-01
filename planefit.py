@@ -246,7 +246,7 @@ def generate_planar_cut_files(
         'plane_func':F,
         'xstart':xstart,
         'xend':xend,
-        'get_y':get_ys,
+        'get_ys':get_ys,
         'pitch':pitch,
         'yres':yres,
         'offsets':offsets,
