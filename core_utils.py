@@ -41,6 +41,29 @@ def check_metrology_probe(comport):
     return response
 
 
+def get_cut_parameters(cutparamsfile):
+    """
+    Loads cut parameters from a file.
+
+    Parameters
+    ----------
+    cutparamsfile : str or Path
+        Path to the cut parameters file. The file should contain values in the
+        order: thick_depth, med_depth, thin_depth, cutpitch (one per line or column).
+
+    Returns
+    -------
+    tuple of float
+        A tuple containing:
+        - thick_depth
+        - med_depth
+        - thin_depth
+        - cutpitch
+    """
+    values = np.loadtxt(cutparamsfile, dtype=str, skiprows=1)
+    thick_depth, med_depth, thin_depth, cutpitch = map(float, values[:4])
+    return thick_depth, med_depth, thin_depth, cutpitch
+
 def make_cam_file(filename, filenum, xval, ys, zs):
     """
     Creates an Aerotech-compatible .Cam file with x, y, and z position data for a given file number.

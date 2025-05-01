@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import optimize as opt
+import core_utils as cu
 
 
 def make_cam_file(filename, filenum, xval,ys,zs):
@@ -23,12 +24,6 @@ def make_cam_file(filename, filenum, xval,ys,zs):
         f.write(num + ' ' + str(ys[i]) + ' ' + str(zs[i]) + '\n')
 
     return 1
-
-
-def get_cut_parameters(cutparamsfile):
-    file = np.loadtxt(cutparamsfile,dtype=str,skiprows=1)
-    thick_depth, med_depth, thin_depth, cutpitch = float(file[0]),float(file[1]),float(file[2]),float(file[3])
-    return thick_depth, med_depth, thin_depth, cutpitch
 
 
 def get_spindle_offsets(spindlecalfile,spindle):
