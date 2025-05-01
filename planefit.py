@@ -240,19 +240,19 @@ def generate_planar_cut_files(
 
     # Select path and values
     cam_args = {
-        'path': {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[cuttype],
-        'label': cuttype,
-        'p': p,
-        'F': F,
-        'xstart': xstart,
-        'xend': xend,
-        'get_ys': get_ys,
-        'pitch': pitch,
-        'Yres': Yres,
-        'offsets': offsets,
-        'bladeradius': bladeradius,
-        'depth': depths[cuttype],
-        'measrad': measrad
+        'cutpath'={'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[cuttype],
+        'thickness_label':cuttype,
+        'p':p,
+        'plane_func':F,
+        'xstart':xstart,
+        'xend':xend,
+        'get_y':=get_ys,
+        'pitch':=pitch,
+        'yres':yres,
+        'offsets':offsets,
+        'bladeradius':bladeradius,
+        'depth':depths[cuttype],
+        'measrad':measrad
     }
 
     cu._write_cam_set(**cam_args)
