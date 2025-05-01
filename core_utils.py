@@ -137,13 +137,15 @@ def _write_cam_set(
     cutpath,
     thickness_label,
     p, plane_func,
-    Xstart, Xend, Ystart, Yend,
+    Xstart, Xend,
+    get_ys,
     pitch, Yres,
     offsets,
     bladeradius, depth, measrad
 ):
     """
     Writes out Master.txt and CAM files for a given thickness type based on a planar fit.
+    Supports dynamic Y-ranges for each scanline to accommodate both rectangular and circular geometries.
 
     Parameters
     ----------
@@ -155,12 +157,15 @@ def _write_cam_set(
         Coefficients of the plane function.
     plane_func : callable
         Function representing the planar fit (e.g., a lambda or poly2d).
-    Xstart, Xend, Ystart, Yend : float
-        Ranges for x and y positions.
+    Xstart, Xend : float
+        Ranges for x positions.
+    get_ys : callable
+        Function that takes a single x value and returns a 1D array of corresponding y values
+        for that scanline (used for circular or rectangular geometry).
     pitch : float
         Step size in x-direction.
     Yres : float
-        Step size in y-direction.
+        Step size in y-direction (kept for reference, not actively used here).
     offsets : tuple of float
         (Xoffset, Yoffset, Zoffset) to apply to the generated points.
     bladeradius : float
@@ -170,6 +175,9 @@ def _write_cam_set(
     measrad : float
         Radius of probe tip or other measurement correction.
     """
+    from pathlib import Path
+    import numpy as np
+
     cutpath = Path(cutpath)
     cutpath.mkdir(parents=True, exist_ok=True)
 
@@ -179,7 +187,10 @@ def _write_cam_set(
     master_file_path = cutpath / 'Master.txt'
     with open(master_file_path, 'w') as masterfile:
         for j, xx in enumerate(xs):
-            ys = np.arange(Ystart, Yend, Yres)
+            ys = get_ys(xx)
+            if len(ys) == 0:
+                continue
+
             zs = np.zeros(len(ys))
             for i, yy in enumerate(ys):
                 zcalc = plane_func(xx, yy, *p)
@@ -192,7 +203,6 @@ def _write_cam_set(
             masterfile.write(
                 f"{linenum} {xx + Xoffset} {ys[0] + Yoffset} {zs[0]} {ys[-1] + Yoffset}\n"
             )
-
 
 
 def get_spindle_offsets(spindlecalfile, spindle):
