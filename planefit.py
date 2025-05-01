@@ -8,15 +8,6 @@ from scipy import optimize as opt
 import core_utils as cu
 
 
-
-def get_spindle_offsets(spindlecalfile,spindle):
-    file = np.loadtxt(spindlecalfile,dtype=str,skiprows=1)
-    calfileindex = np.where(file[:,0]==spindle)[0][0]
-    xoffset, yoffset, zoffset = file[calfileindex,1], file[calfileindex,2], file[calfileindex,3]
-
-    return float(xoffset), float(yoffset), float(zoffset)
-
-
 def planefit(filepath, do_plot=True):
     """
     Load metrology data from 'filepath', perform a plane fit, optionally plot the results.
