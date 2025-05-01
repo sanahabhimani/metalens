@@ -105,21 +105,77 @@ def generate_planar_cut_files(
     spindle,
     calibrationfilepath,
     cutparamsfile,
+    bladeradius,
+    cuttype,
     xstart,
     xend,
-    ycenter=None,
+    geometry,  # 'circular' or 'rectangular'
     ystart=None,
     yend=None,
     cutdiameter=None,
-    bladeradius=1.0,
-    flag='Thick',
-    geometry='rectangular',  # 'circular' or 'rectangular'
+    ycenter=None,
     use_noshift_suffix=True
 ):
     """
-    Generate cut-camming files for a planar surface, supporting circular or rectangular geometries.
-    """
+    Generate cut-camming files for a planar surface, supporting both circular and rectangular geometries.
 
+    Parameters
+    ----------
+    p : array-like of float
+        Plane coefficients [a, b, c] from the plane fitting function.
+
+    pathname : str
+        Base directory where output folders and files are stored.
+
+    spindle : str
+        Spindle identifier (used in file path construction).
+
+    calibrationfilepath : str
+        Path to the spindle calibration file (used to retrieve X, Y, Z offsets).
+
+    cutparamsfile : str
+        File containing cut parameters such as thick/med/thin depth and pitch.
+
+    bladeradius : float
+        Radius of the cutting blade.
+
+    cuttype : str
+        Which cut type to generate: 'Thick', 'Thin', or 'Med'.
+
+    xstart : float
+        Starting X position for the cut region.
+
+    xend : float
+        Ending X position for the cut region.
+
+    geometry : str
+        Geometry of the region to be cut. Must be either 'circular' or 'rectangular'.
+
+    ystart : float, optional
+        Starting Y position for rectangular cuts (only used if geometry='rectangular'). Default is None.
+
+    yend : float, optional
+        Ending Y position for rectangular cuts (only used if geometry='rectangular'). Default is None.
+
+    cutdiameter : float, optional
+        Diameter of the circular region (only used if geometry='circular'). Default is None.
+
+    ycenter : float, optional
+        Y center of the circular region (only used if geometry='circular'). Default is None.
+
+    use_noshift_suffix : bool, default=True
+        If True, appends '-Noshift' to cut directory names (applies to all current use cases). Default is True.
+
+    Notes
+    -----
+    - For **circular geometry**, provide: `cutdiameter`, `ycenter`
+    - For **rectangular geometry**, provide: `ystart`, `yend`
+
+    Returns
+    -------
+    None or str
+        Returns 'Lockfile present' if a lock file exists and cut generation is skipped. Otherwise, writes cam files and returns None.
+    """
     # Construct cut paths
     suffix = '-Noshift' if use_noshift_suffix else ''
     cutpaththick = os.path.join(pathname, spindle, f'CutCammingThick{suffix}/')
@@ -127,7 +183,7 @@ def generate_planar_cut_files(
     cutpathmed   = os.path.join(pathname, spindle, f'CutCammingMed{suffix}/')
 
     # Lockfile check
-    lockpath = {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}.get(flag)
+    lockpath = {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}.get(cuttype)
     if cu._check_lockfile(lockpath):
         return 'Lockfile present'
 
@@ -184,8 +240,8 @@ def generate_planar_cut_files(
 
     # Select path and values
     cam_args = {
-        'path': {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[flag],
-        'label': flag,
+        'path': {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[cuttype],
+        'label': cuttype,
         'p': p,
         'F': F,
         'xstart': xstart,
@@ -195,7 +251,7 @@ def generate_planar_cut_files(
         'Yres': Yres,
         'offsets': offsets,
         'bladeradius': bladeradius,
-        'depth': depths[flag],
+        'depth': depths[cuttype],
         'measrad': measrad
     }
 
