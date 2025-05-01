@@ -107,125 +107,98 @@ def generate_planar_cut_files(
     cutparamsfile,
     xstart,
     xend,
-    ystart,
-    yend,
-    bladeradius,
-    flag
+    ycenter=None,
+    ystart=None,
+    yend=None,
+    cutdiameter=None,
+    bladeradius=1.0,
+    flag='Thick',
+    geometry='rectangular',  # 'circular' or 'rectangular'
+    use_noshift_suffix=True
 ):
     """
-    Generate cut-camming files (Thick, Thin, or Med) for a flat/planar surface,
-    using pre-computed plane-fit parameters p = [a, b, c].
-
-    Unlike the old plane_fit_* functions, this does NOT do a plane fit itself;
-    it just writes out the cam files. The assumption is that you've already
-    run planefit(...) or any other plane-fitting method to get p.
-
-    Parameters
-    ----------
-    p : array-like of float
-        Plane coefficients [a, b, c] for z = -a*x - b*y - c, as returned by planefit(...).
-    pathname : str
-        Base path for file I/O.
-    spindle : str
-        Spindle identifier or name.
-    calibrationfilepath : str
-        Path to calibration data (used for offset retrieval).
-    cutparamsfile : str
-        File containing thick_depth, med_depth, thin_depth, and pitch.
-    xstart, xend, ystart, yend : float
-        Boundaries for the cutting area.
-    bladeradius : float
-        Radius of the blade.
-    flag : str
-        "Thick", "Thin", or "Med" indicating which cut-camming set to generate.
-
-    Returns
-    -------
-    str or None
-        Returns "Lockfile present" if a lock file is found, otherwise None.
-        The function also writes files to disk as a side effect.
+    Generate cut-camming files for a planar surface, supporting circular or rectangular geometries.
     """
 
-    # We assume you want to always use -Noshift/ in the directory paths,
-    # as if it were 'dressing' or 'test wafer' with -Noshift.
-    cutpaththick = os.path.join(pathname, spindle, 'CutCammingThick-Noshift/')
-    cutpaththin  = os.path.join(pathname, spindle, 'CutCammingThin-Noshift/')
-    cutpathmed   = os.path.join(pathname, spindle, 'CutCammingMed-Noshift/')
+    # Construct cut paths
+    suffix = '-Noshift' if use_noshift_suffix else ''
+    cutpaththick = os.path.join(pathname, spindle, f'CutCammingThick{suffix}/')
+    cutpaththin  = os.path.join(pathname, spindle, f'CutCammingThin{suffix}/')
+    cutpathmed   = os.path.join(pathname, spindle, f'CutCammingMed{suffix}/')
 
-    # 1) Lockfile checks
-    if flag == 'Thick':
-        if _check_lockfile(cutpaththick):
-            return 'Lockfile present'
-    elif flag == 'Thin':
-        if _check_lockfile(cutpaththin):
-            return 'Lockfile present'
-    elif flag == 'Med':
-        if _check_lockfile(cutpathmed):
-            return 'Lockfile present'
+    # Lockfile check
+    lockpath = {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}.get(flag)
+    if cu._check_lockfile(lockpath):
+        return 'Lockfile present'
 
-    # 2) Ensure directories exist
+    # Ensure directories exist
     for path in (cutpaththick, cutpaththin, cutpathmed):
-        if not os.path.isdir(path):
-            os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
-    # 3) Load cutting parameters + spindle offsets
-    thick_depth, med_depth, thin_depth, cutpitch = cu.get_cut_parameters(
-        os.path.join(pathname, cutparamsfile)
-    )
-    newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(
-        calibrationfilepath,
-        spindle
-    )
+    # Load parameters
+    thick_depth, med_depth, thin_depth, cutpitch = cu.get_cut_parameters(os.path.join(pathname, cutparamsfile))
+    newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(calibrationfilepath, spindle)
 
-    # Depth offsets
-    Thickdepth = thick_depth
-    Meddepth   = Thickdepth + med_depth
-    Thindepth  = Meddepth   + thin_depth
-
-    # Some constants
-    Xstart = xstart
-    Xend   = xend
-    Ystart = ystart
-    Yend   = yend
-    pitch  = cutpitch
-    Yres   = 0.500
+    # Depth values
+    depths = {
+        'Thick': thick_depth,
+        'Med': thick_depth + med_depth,
+        'Thin': thick_depth + med_depth + thin_depth
+    }
+    offsets = (newxoffset, newyoffset, newzoffset)
+    pitch = cutpitch
+    Yres = 0.500
     measrad = 0.500
 
-    # Print a bit of info
-    print("Using plane parameters:", p)
-    print("X range:", (Xstart, Xend), "Y range:", (Ystart, Yend))
-    print("Blade radius:", bladeradius)
-    print("Cut depths [Thick, Med, Thin]:", (Thickdepth, Meddepth, Thindepth))
-    print("Offsets [X, Y, Z]:", (newxoffset, newyoffset, newzoffset))
+    print(f"Using plane parameters: {p}")
+    print(f"X range: ({xstart}, {xend}), Blade radius: {bladeradius}")
+    print(f"Offsets: {offsets}, Cut depths: {depths}")
 
-    # 4) Write out the cam files based on flag
-    # We'll define a local helper for computing the plane
+    # Define Y-range generator
+    if geometry == 'circular':
+        if cutdiameter is None or ycenter is None:
+            raise ValueError("cutdiameter and ycenter must be provided for circular geometry")
+        radius = cutdiameter / 2.0
+        xcenter = (xstart + xend) / 2.0
+
+        def get_ys(xx):
+            dx = xx - xcenter
+            if abs(dx) > radius:
+                return np.array([])
+            dy = np.sqrt(radius**2 - dx**2)
+            return np.arange(ycenter - dy, ycenter + dy + 0.0001, Yres)
+
+    elif geometry == 'rectangular':
+        if ystart is None or yend is None:
+            raise ValueError("ystart and yend must be provided for rectangular geometry")
+
+        def get_ys(xx):
+            return np.arange(ystart, yend, Yres)
+
+    else:
+        raise ValueError("geometry must be 'circular' or 'rectangular'")
+
+    # Plane function
     def F(x, y, a, b, c):
-        return -a*x - b*y - c
+        return -a * x - b * y - c
 
-    if flag == 'Thick':
-        cu._write_cam_set(
-            cutpaththick, 'Thick', p, F,
-            Xstart, Xend, Ystart, Yend,
-            pitch, Yres,
-            (newxoffset, newyoffset, newzoffset),
-            bladeradius, Thickdepth, measrad
-        )
-    elif flag == 'Thin':
-       cu._write_cam_set(
-            cutpaththin, 'Thin', p, F,
-            Xstart, Xend, Ystart, Yend,
-            pitch, Yres,
-            (newxoffset, newyoffset, newzoffset),
-            bladeradius, Thindepth, measrad
-        )
-    elif flag == 'Med':
-       cu._write_cam_set(
-            cutpathmed, 'Med', p, F,
-            Xstart, Xend, Ystart, Yend,
-            pitch, Yres,
-            (newxoffset, newyoffset, newzoffset),
-            bladeradius, Meddepth, measrad
-        )
+    # Select path and values
+    cam_args = {
+        'path': {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}[flag],
+        'label': flag,
+        'p': p,
+        'F': F,
+        'xstart': xstart,
+        'xend': xend,
+        'get_ys': get_ys,
+        'pitch': pitch,
+        'Yres': Yres,
+        'offsets': offsets,
+        'bladeradius': bladeradius,
+        'depth': depths[flag],
+        'measrad': measrad
+    }
 
-    return None  # Indicate success if no lockfile prevented it
+    cu._write_cam_set(**cam_args)
+
+    return None
