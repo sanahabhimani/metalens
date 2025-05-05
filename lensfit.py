@@ -7,6 +7,71 @@ import core_utils as cu
 
 
 
+def lensfit(pathname, metrologyfilename, afixed, bfixed, lensparams):
+    """
+    Fit a lens surface to metrology data using two optimization techniques.
+
+    Parameters
+    ----------
+    pathname : str
+        Directory containing the metrology file.
+    metrologyfilename : str
+        CSV file with columns: x, y, z, radius.
+    afixed, bfixed : float
+        Fixed parameters for optimization.
+    lensparams : any
+        Additional lens parameters required for modeling.
+
+    Returns
+    -------
+    p : ndarray
+        Fitted parameters from method 1.
+    p2 : ndarray
+        Fitted parameters from method 2.
+    cov : ndarray
+        Covariance matrix for p.
+    infodict : dict
+        Optimization metadata for p.
+    mesg : str
+        Message from optimizer for p.
+    ier : int
+        Optimizer exit code for p.
+    resids : ndarray
+        Residuals from method 1.
+    qin : ndarray
+        Adjusted z-values (zin + r).
+    xin, yin : ndarray
+        Input x and y positions from metrology file.
+    """
+    pts = np.loadtxt(pathname + metrologyfilename, delimiter=',')
+    xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
+    qin = zin + r
+
+    # Starting parameter vector
+    p0 = [83.255, 365.741, -40, afixed, bfixed]
+
+    print('Fitting with technique 1')
+    p, cov, infodict, mesg, ier = opt.leastsq(
+        F, p0, args=(xin, yin, qin, afixed, bfixed, lensparams),
+        full_output=1, ftol=1e-14, xtol=1e-14, diag=(1, 1, 1, 10, 10))
+    resids = infodict['fvec']
+
+    print('Fitting with technique 2')
+    p2, cov2, infodict2, mesg2, ier2 = opt.leastsq(
+        FuncNew, p0, args=(xin, yin, qin, afixed, bfixed, lensparams),
+        full_output=1, ftol=1e-14, xtol=1e-14, diag=(1, 1, 1, 10, 10))
+
+    print('P1: ', p)
+    print('P2: ', p2)
+    print('Diff: ', p2 - p)
+
+    return p, p2, cov, infodict, mesg, ier, resids, qin, xin, yin
+
+
+
+
+
+
 def lensfit(pathname,spindle,calibrationfilepath,metrologyfilename,flag,lensparams,afixed,bfixed,stepheight,bladeradius,cutdiameter,cutparamsfile,x_rot_shift):
     
     spindledir = spindle+'/'
