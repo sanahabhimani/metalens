@@ -8,34 +8,48 @@ from scipy import optimize as opt
 import core_utils as cu
 
 
-def planefit(filepath, do_plot=True):
+def quickfit_plane(filepath, do_plot=True):
     """
-    Load metrology data from 'filepath', perform a plane fit, optionally plot the results.
+    Load metrology data from 'filepath', perform a simple least-squares plane fit,
+    and generate a 4-panel 3D visualization of the data, residuals, gauge values,
+    and model surface.
+
+    This is intended for quick plane fitting  on dressing boards and test wafers.
+    It is not as involved as plane fitting for lenses and alumina filters, which
+    require a fourier fit and fourier eval function.
 
     Parameters
     ----------
     filepath : str
         Full path to the metrology .dat file containing columns [x, y, z, r].
     do_plot : bool, optional
-        If True, generate a 4-panel 3D plot of the data, residuals, gauge, and fit.
+        If True, generate 3D surface plots for visual inspection.
 
     Returns
     -------
-    p, cov, infodict, mesg, ier
-        Fit parameters, covariance, info dict, message, and the integer status from leastsq.
+    p : array
+        Best-fit plane parameters [a, b, c] such that z = -a*x - b*y - c.
+    cov : array
+        Covariance matrix from the fit.
+    infodict : dict
+        Dictionary with information returned by scipy.optimize.leastsq.
+    mesg : str
+        Message describing the exit status of the fit.
+    ier : int
+        Integer flag indicating success (1–4) or failure (0 or 5).
     """
-    # Load CSV data
+    # Load data
     pts = np.loadtxt(filepath, delimiter=",")
     xin = pts[:, 0]
     yin = pts[:, 1]
     zin = pts[:, 2]
     r   = pts[:, 3]
 
-    # Combine gauge reading
+    # Combined surface height from gauge offset
     qin = zin + r
 
     def F(x, y, a, b, c):
-        return -a*x - b*y - c
+        return -a * x - b * y - c
 
     def planefit_residuals(params, x, y, q):
         a, b, c = params
@@ -44,7 +58,7 @@ def planefit(filepath, do_plot=True):
     # Initial guess
     p0 = [0.0, 0.0, 0.0]
 
-    # Fit
+    # Least-squares fit
     p, cov, infodict, mesg, ier = opt.leastsq(
         planefit_residuals,
         p0,
@@ -57,46 +71,43 @@ def planefit(filepath, do_plot=True):
     print("Plane fit parameters (a, b, c):", p)
     print("Leastsq message:", mesg, "| ier =", ier)
 
-    # Optional plotting
     if do_plot:
         residuals = qin - F(xin, yin, *p)
+        zmodel = F(xin, yin, *p)
 
-        fig = plt.figure()
-        # Data
+        fig = plt.figure(figsize=(16, 4), dpi=120)
+
+        # Panel 1: Data
         ax = fig.add_subplot(1, 4, 1, projection="3d")
         ax.plot_trisurf(xin, yin, qin, cmap=cm.jet, linewidth=0.2)
         ax.set_title("Data")
 
-        # Residuals
+        # Panel 2: Residuals
         ax = fig.add_subplot(1, 4, 2, projection="3d")
         ax.plot_trisurf(xin, yin, residuals, cmap=cm.jet, linewidth=0.2)
-        plt.xlabel("X (mm)")
-        plt.ylabel("Y (mm)")
+        ax.set_title("Residuals")
+        ax.set_xlabel("X (mm)")
+        ax.set_ylabel("Y (mm)")
         ax.set_zlabel("Z residual (mm)")
-        plt.title("Residuals")
 
-        # Gauge readout
+        # Panel 3: Gauge Readout
         ax = fig.add_subplot(1, 4, 3, projection="3d")
         ax.plot_trisurf(xin, yin, r, cmap=cm.jet, linewidth=0.2)
         ax.set_title("Gauge (r)")
-        plt.xlabel("X (mm)")
-        plt.ylabel("Y (mm)")
+        ax.set_xlabel("X (mm)")
+        ax.set_ylabel("Y (mm)")
 
-        # Model surface
-        zmodel = F(xin, yin, *p)
+        # Panel 4: Model Plane
         ax = fig.add_subplot(1, 4, 4, projection="3d")
         ax.plot_trisurf(xin, yin, zmodel, cmap=cm.jet, linewidth=0.2)
         ax.set_title("Model")
-        plt.xlabel("X (mm)")
-        plt.ylabel("Y (mm)")
+        ax.set_xlabel("X (mm)")
+        ax.set_ylabel("Y (mm)")
 
+        plt.tight_layout()
         plt.show()
 
     return p, cov, infodict, mesg, ier
-
-
-## How to call the functions
-# p, cov, infodict, mesg, ier = planefit("/some/path/met_data.dat")
 
 
 def generate_planar_cut_files(
