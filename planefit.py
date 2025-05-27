@@ -1,5 +1,3 @@
-## this is me making some changes to a few plane fit functions
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,6 +5,77 @@ from matplotlib import cm
 from scipy import optimize as opt
 import core_utils as cu
 
+
+### Helper Functions ###
+def fourier_fit(pos, z, n_max):
+    """
+    Compute a 2D Fourier fit of the residuals across the measurement surface.
+
+    Parameters
+    ----------
+    pos : ndarray of shape (N, 2)
+        Positions of measurement points as [[x1, y1], [x2, y2], ..., [xN, yN]].
+    z : ndarray of shape (N,)
+        Residuals or values to be fit.
+    n_max : int
+        Maximum spatial frequency in each direction. The number of modes used is (2 * n_max + 1)^2.
+
+    Returns
+    -------
+    A : ndarray of complex, shape ((2 * n_max + 1)^2,)
+        Complex Fourier coefficients for each mode.
+    """
+    i_max = (2 * n_max + 1)**2
+    k_max = len(pos)
+
+    F = np.zeros((i_max, k_max), dtype=complex)
+
+    for i in range(i_max):
+        m = int(i % (2 * n_max + 1)) - n_max
+        n = int(i / (2 * n_max + 1)) - n_max
+
+        for k in range(k_max):
+            x, y = pos[k]
+            F[i, k] = np.exp(1j * (m * x / 300. * 2 * np.pi + n * y / 300. * 2 * np.pi))
+
+    M = np.linalg.pinv(F)
+    A = np.dot(z, M)
+
+    return A
+
+
+def fourier_eval(A_coef, x, y, n_max):
+    """
+    Evaluate a 2D complex Fourier series at a single point (x, y).
+
+    Parameters
+    ----------
+    A_coef : ndarray of complex
+        Fourier coefficients obtained from fourier_fit(), length must be (2 * n_max + 1)^2.
+    x : float
+        X-coordinate of the point to evaluate.
+    y : float
+        Y-coordinate of the point to evaluate.
+    n_max : int
+        Maximum spatial frequency used in the fit.
+
+    Returns
+    -------
+    float
+        Real part of the Fourier sum evaluated at (x, y).
+    """
+    i_max = (2 * n_max + 1)**2
+    temp = 0 + 0j
+
+    for i in range(i_max):
+        m = int(i % (2 * n_max + 1)) - n_max
+        n = int(i / (2 * n_max + 1)) - n_max
+
+        temp += A_coef[i] * np.exp(1j * (m * x / 300. * 2 * np.pi + n * y / 300. * 2 * np.pi))
+
+    return np.real(temp)
+
+### Plane Fitting Functions Relevant to Either Test Wafer, Dressing Board, Lens, Alumina Filter ###
 
 def quickfit_plane(filepath, do_plot=True):
     """
