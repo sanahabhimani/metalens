@@ -75,7 +75,105 @@ def fourier_eval(A_coef, x, y, n_max):
 
     return np.real(temp)
 
+
 ### Plane Fitting Functions Relevant to Either Test Wafer, Dressing Board, Lens, Alumina Filter ###
+def planefit(filepath, do_plot=True):
+    """
+    Perform plane fitting and Fourier residual correction on lens or alumina metrology data.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the metrology .dat file with columns [x, y, z, r].
+    do_plot : bool, optional
+        Whether to generate 2D contour plots of the results.
+
+    Returns
+    -------
+    p : array
+        Plane fit parameters [a, b, c].
+    corrections : array
+        Fourier-based correction values at each data point.
+    zmodel : array
+        Final model surface: plane + correction.
+    residuals : array
+        Original plane residuals (qin - F).
+    corrected_residuals : array
+        Residuals after Fourier correction (residuals - corrections).
+    """
+    # Config
+    fourier_max = 2
+    correction_max = 0.070
+
+    # Load data
+    pts = np.loadtxt(filepath, delimiter=',')
+    xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
+    qin = zin + r
+
+    def F(x, y, a, b, c):
+        return -a * x - b * y - c
+
+    def residuals_func(params, x, y, q):
+        a, b, c = params
+        return q - F(x, y, a, b, c)
+
+    # Fit plane
+    p0 = [0, 0, 0]
+    p, cov, infodict, mesg, ier = opt.leastsq(
+        residuals_func, p0,
+        args=(xin, yin, qin),
+        full_output=1, ftol=1e-14, xtol=1e-14
+    )
+
+    print("Plane fit parameters (a, b, c):", p)
+    print("Leastsq message:", mesg, "| ier =", ier)
+
+    residuals = qin - F(xin, yin, *p)
+    pos = np.column_stack((xin, yin))
+    A_coef = fourier_fit(pos, residuals, fourier_max)
+
+    corrections = np.array([
+        np.clip(fourier_eval(A_coef, x, y, fourier_max), -correction_max, correction_max)
+        for x, y in zip(xin, yin)
+    ])
+    corrected_residuals = residuals - corrections
+    zmodel = F(xin, yin, *p) + corrections
+
+    if do_plot:
+        # Grid for smooth contour plotting
+        xgrid = np.linspace(xin.min(), xin.max(), 300)
+        ygrid = np.linspace(yin.min(), yin.max(), 300)
+        xoutgrid, youtgrid = np.meshgrid(xgrid, ygrid)
+
+        qingrid   = interpolate.griddata((xin, yin), qin,   (xoutgrid, youtgrid), method="linear")
+        resgrid   = interpolate.griddata((xin, yin), residuals, (xoutgrid, youtgrid), method="linear")
+        corrgrid  = interpolate.griddata((xin, yin), corrected_residuals, (xoutgrid, youtgrid), method="linear")
+        zmodgrid  = interpolate.griddata((xin, yin), zmodel, (xoutgrid, youtgrid), method="linear")
+
+        # Plot
+        fig = plt.figure(figsize=(18, 4), dpi=150)
+        fig.suptitle("Plane Fit + Fourier Correction", fontsize=16)
+
+        def add_contour(ax, data, title):
+            cax = ax.contourf(xgrid, ygrid, data, 40, cmap=cm.jet)
+            cbar = fig.colorbar(cax, ax=ax)
+            cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.4f}'))
+            cbar.update_ticks()
+            ax.set_aspect('equal')
+            ax.set_title(title)
+            ax.set_xlabel("X (mm)")
+            ax.set_ylabel("Y (mm)")
+
+        add_contour(fig.add_subplot(1, 4, 1), qingrid, "Data")
+        add_contour(fig.add_subplot(1, 4, 2), resgrid, "Plane Residuals")
+        add_contour(fig.add_subplot(1, 4, 3), corrgrid, "Correction Residuals")
+        add_contour(fig.add_subplot(1, 4, 4), zmodgrid, "Model Surface")
+
+        plt.tight_layout()
+        plt.show()
+
+    return p, corrections, zmodel, residuals, corrected_residuals
+
 
 def quickfit_plane(filepath, do_plot=True):
     """
