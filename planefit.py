@@ -76,7 +76,7 @@ def fourier_eval(A_coef, x, y, n_max):
     return np.real(temp)
 
 
-### Plane Fitting Functions Relevant to Either Test Wafer, Dressing Board, Lens, Alumina Filter ###
+### Plane Fitting Functions Relevant to Planar Lens and Alumina Filter ###
 def planefit(filepath, do_plot=True):
     """
     Perform plane fitting and Fourier residual correction on lens or alumina metrology data.
@@ -172,4 +172,129 @@ def planefit(filepath, do_plot=True):
         plt.tight_layout()
         plt.show()
 
-    return p, corrections, zmodel, residuals, corrected_residuals
+    return p, corrections, zmodel, residuals, corrected_residuals, xin, yin
+
+
+def generate_planar_files(
+    xin,
+    yin,
+    p,
+    corrections,
+    pathname,
+    spindle,
+    calibrationfilepath,
+    cutparamsfile,
+    cutdiameter,
+    xcenter,
+    ycenter,
+    bladeradius,
+    flag,
+    correction_max=0.070,
+    yres=0.5,
+    measrad=0.5
+    use_noshift_suffix=True
+):
+    """
+    Generate cut camming files for a lens using Fourier-corrected plane fitting results.
+
+    Parameters
+    ----------
+    xin, yin : ndarray
+        X and Y positions from metrology data.
+    p : array-like
+        Plane fit coefficients [a, b, c].
+    corrections : array-like
+        Fourier correction values (pre-clipped).
+    pathname : str
+        Root path to write camming files.
+    spindle : str
+        Spindle identifier (used in folder names).
+    calibrationfilepath : str
+        Path to calibration file for spindle offsets.
+    cutparamsfile : str
+        File containing cut depths and pitch.
+    cutdiameter : float
+        Diameter of the circular region to be cut.
+    xcenter, ycenter : float
+        Center coordinates for the circular cut.
+    bladeradius : float
+        Radius of the blade used for cutting.
+    flag : str
+        Cut type: 'Thick', 'Med', or 'Thin'.
+    correction_max : float, optional
+        Maximum allowed value for Fourier correction.
+    yres : float, optional
+        Resolution in Y-direction.
+    measrad : float, optional
+        Measurement radius (default is 0.5 mm).
+    use_noshift_suffix : bool, default=True
+        If True, appends '-Noshift' to cut directory names. Default is True.
+
+    Returns
+    -------
+    None
+    """
+    # Determine cut path
+    suffix = '-Noshift' if use_noshift_suffix else ''
+    cutpath = os.path.join(pathname, spindle, f'CutCamming{flag}{suffix}/')
+
+    # Lockfile check
+    lockfile = os.path.join(cutpath, 'lockfile.lock')
+    if os.path.exists(lockfile):
+        print(f"Lockfile {flag} present")
+        return 'Lockfile present'
+
+    os.makedirs(cutpath, exist_ok=True)
+
+    # Load cut parameters and spindle offsets
+    thick_depth, med_depth, thin_depth, cutpitch = cu.get_cut_parameters(os.path.join(pathname, cutparamsfile))
+    newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(calibrationfilepath, spindle)
+
+    # Set depth and offsets
+    depth = {'Thick': thick_depth,
+             'Med': thick_depth + med_depth,
+             'Thin': thick_depth + med_depth + thin_depth}[flag]
+
+    zoffset = newzoffset
+    xoffset = newxoffset
+    yoffset = newyoffset
+
+    # Plane function
+    def F(x, y, a, b, c):
+        return -a * x - b * y - c
+
+    # X range for cutting
+    xstart = xcenter - cutdiameter / 2.0 + yres
+    xend = xcenter + cutdiameter / 2.0
+    xs = np.arange(xstart, xend, cutpitch)
+
+    # Write master file
+    cutmasterfile = open(os.path.join(cutpath, 'Master.txt'), 'w')
+
+    for j, xx in enumerate(xs):
+        dx = xx - xcenter
+        if abs(dx) > cutdiameter / 2.0:
+            continue
+
+        dy = np.sqrt((cutdiameter / 2.0)**2 - dx**2)
+        ystart = ycenter - dy
+        yend = ycenter + dy + 0.0001
+        ys = np.arange(ystart, yend, yres)
+
+        zs = np.zeros_like(ys)
+        for i, yy in enumerate(ys):
+            correction_idx = np.argmin(np.hypot(xin - xx, yin - yy))
+            correction = corrections[correction_idx]
+            if abs(correction) > correction_max:
+                correction = np.sign(correction) * correction_max
+
+            zs[i] = F(xx, yy, *p) + correction - zoffset + bladeradius - depth - measrad
+
+        fname = os.path.join(cutpath, f'CutCam{flag}')
+        make_cam_file(fname, j, xx + xoffset, ys + yoffset, zs)
+
+        xvar = xx + xoffset
+        xstr = '%.3f' % xvar
+        cutmasterfile.write(f"{j:04d} {xstr} {ys[0] + yoffset:.3f} {zs[0]:.3f} {ys[-1] + yoffset:.3f}\n")
+
+    cutmasterfile.close()
