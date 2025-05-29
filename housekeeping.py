@@ -108,7 +108,7 @@ def quickfit_plane(filepath, do_plot=True):
     return p, cov, infodict, mesg, ier
 
 
-def generate_planar_cut_files(
+def generate_hkcut_files(
     p,
     pathname,
     spindle,
@@ -118,11 +118,8 @@ def generate_planar_cut_files(
     cuttype,
     xstart,
     xend,
-    geometry,  # 'circular' or 'rectangular'
-    ystart=None,
-    yend=None,
-    cutdiameter=None,
-    ycenter=None,
+    ystart,
+    yend,
     use_noshift_suffix=True
 ):
     """
@@ -157,33 +154,20 @@ def generate_planar_cut_files(
     xend : float
         Ending X position for the cut region.
 
-    geometry : str
-        Geometry of the region to be cut. Must be either 'circular' or 'rectangular'.
-
     ystart : float, optional
-        Starting Y position for rectangular cuts (only used if geometry='rectangular'). Default is None.
+        Starting Y position for rectangular cuts.
 
     yend : float, optional
-        Ending Y position for rectangular cuts (only used if geometry='rectangular'). Default is None.
-
-    cutdiameter : float, optional
-        Diameter of the circular region (only used if geometry='circular'). Default is None.
-
-    ycenter : float, optional
-        Y center of the circular region (only used if geometry='circular'). Default is None.
+        Ending Y position for rectangular cuts.
 
     use_noshift_suffix : bool, default=True
         If True, appends '-Noshift' to cut directory names (applies to all current use cases). Default is True.
 
-    Notes
-    -----
-    - For **circular geometry**, provide: `cutdiameter`, `ycenter`
-    - For **rectangular geometry**, provide: `ystart`, `yend`
 
     Returns
     -------
     None or str
-        Returns 'Lockfile present' if a lock file exists and cut generation is skipped. Otherwise, writes cam files and returns None.
+        Returns 'Lockfile present' if a lock file exists and cut generation is skipped. Otherwise, writes cam files.
     """
     # Construct cut paths
     suffix = '-Noshift' if use_noshift_suffix else ''
@@ -193,14 +177,13 @@ def generate_planar_cut_files(
 
     # Lockfile check
     lockpath = {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}.get(cuttype)
-    if cu._check_lockfile(lockpath):
-        return 'Lockfile present'
+    cu._check_lockfile(lockpath):
 
-    # Ensure directories exist
+    # Make the relevant directories
     for path in (cutpaththick, cutpaththin, cutpathmed):
         os.makedirs(path, exist_ok=True)
 
-    # Load parameters
+    # Load blade cut depth parameters
     thick_depth, med_depth, thin_depth, cutpitch = cu.get_cut_parameters(os.path.join(pathname, cutparamsfile))
     newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(calibrationfilepath, spindle)
 
@@ -219,29 +202,12 @@ def generate_planar_cut_files(
     print(f"X range: ({xstart}, {xend}), Blade radius: {bladeradius}")
     print(f"Offsets: {offsets}, Cut depths: {depths}")
 
-    # Define Y-range generator
-    if geometry == 'circular':
-        if cutdiameter is None or ycenter is None:
-            raise ValueError("cutdiameter and ycenter must be provided for circular geometry")
-        radius = cutdiameter / 2.0
-        xcenter = (xstart + xend) / 2.0
 
-        def get_ys(xx):
-            dx = xx - xcenter
-            if abs(dx) > radius:
-                return np.array([])
-            dy = np.sqrt(radius**2 - dx**2)
-            return np.arange(ycenter - dy, ycenter + dy + 0.0001, yres)
+    if ystart is None or yend is None:
+        raise ValueError("ystart and yend must be provided for rectangular geometry")
 
-    elif geometry == 'rectangular':
-        if ystart is None or yend is None:
-            raise ValueError("ystart and yend must be provided for rectangular geometry")
-
-        def get_ys(xx):
-            return np.arange(ystart, yend, yres)
-
-    else:
-        raise ValueError("geometry must be 'circular' or 'rectangular'")
+    def get_ys(xx):
+        return np.arange(ystart, yend, yres)
 
     # Plane function
     def F(x, y, a, b, c):
@@ -265,6 +231,3 @@ def generate_planar_cut_files(
     }
 
     cu._write_cam_set(**cam_args)
-
-    return None
-
