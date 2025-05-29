@@ -112,25 +112,15 @@ def make_cam_file(filename, filenum, xval, ys, zs):
 
 def _check_lockfile(path):
     """
-    Checks whether a 'lockfile.lock' file is present in the given directory.
-
-    Parameters
-    ----------
-    path : str or Path
-        Directory to check for the presence of the lockfile.
-
-    Returns
-    -------
-    bool
-        True if the lockfile is present, False otherwise.
+    Raises an IOError if 'lockfile.lock' is present in the given directory.
     """
     lockfile = Path(path) / 'lockfile.lock'
     if lockfile.exists():
-        print(f"Lockfile present in {lockfile.parent}")
-        return True
+        # stop immediately if we see a lockfile
+        raise IOError(f"Lockfile present in {lockfile.parent}")
+    # otherwise, just return silently
     else:
-        print(f"No lockfile in {lockfile.parent}")
-        return False
+        print("Lockfile not present, moving forward.")
 
 
 def _write_cam_set(
