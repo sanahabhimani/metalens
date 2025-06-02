@@ -271,6 +271,9 @@ def generate_alumina_cutfiles(
     None
         Writes out one “Master.txt” and all “CutCam” files for the specified flag.
     """
+    fourier_max = 2
+    correction_max = 0.070
+
     # 1) Determine cut‐camming subfolder names
     metpath     = os.path.join(pathname, 'MetrologyCamming')
     if cutdiameterflag == 'Noshift':
@@ -384,7 +387,7 @@ def generate_alumina_cutfiles(
         # 11) For each (xx, yy), compute the fourier correction + plane + blade offset
         for i, yy in enumerate(ys):
             raw_plane = -p[0]*xx - p[1]*yy - p[2]
-            corr_val = pf.fourier_eval(A_coef, xx, yy, fourier_max)
+            corr_val = pf.fourier_eval(A_coef, xx, yy, pf.fourier_max)
 
             # TODO: FIX: check to see if abs(correction) argument from original code should apply
             corr_val = np.sign(corr_val) * min(abs(corr_val), correction_max)
