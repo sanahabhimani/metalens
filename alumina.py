@@ -220,6 +220,7 @@ def generate_alumina_cutfiles(
     bladeradius,
     p,                  # plane‐fit parameters from planefit.planefit()
     corrections,
+    A_coef,
     xin,
     yin,
 ):
@@ -257,6 +258,9 @@ def generate_alumina_cutfiles(
         Plane‐fit parameters [a, b, c] from planefit.planefit().
     corrections : array_like, shape (N,)
         Fourier‐correction values (clipped) at each data point (xin, yin).
+    A_coef: array_like, shape (N, )
+        The Fourier coefficients for reconstructing the surface at arbitrary points
+        accurately.
     xin, yin : array_like, shape (N,)
         The X and Y coordinates of each metrology measurement, as returned
         from planefit.planefit().
@@ -379,15 +383,10 @@ def generate_alumina_cutfiles(
         # 11) For each (xx, yy), compute the fourier correction + plane + blade offset
         for i, yy in enumerate(ys):
             raw_plane = -p[0]*xx - p[1]*yy - p[2]
-            corr_val = corrections[np.argmin((xin - xx)**2 + (yin - yy)**2)]
-            # The original used fourier_eval at each (xx,yy). If you prefer to
-            # re‐evaluate the Fourier surface at exactly (xx,yy), do:
-            #    corr_val = fourier_eval(A_coef, xx, yy, fourier_max)
-            # and then clip. But since corrections[] is given at sample points,
-            # we’re simply nearest‐neighboring for demonstration.
+            corr_val = fourier_eval(A_coef, xx, yy, fourier_max)
 
-            # Clip to ±correction_max if needed (though corrections array already is clipped)
-            # corr_val = np.sign(corr_val) * min(abs(corr_val), correction_max)
+            # TODO: FIX: check to see if abs(correction) argument from original code should apply
+            corr_val = np.sign(corr_val) * min(abs(corr_val), correction_max)
 
             # Now compute Z: plane + corr − Zoffset + Radius − Depth − measrad
             zs[i] = raw_plane + corr_val - Zoffset + Radius - Depth - measrad
