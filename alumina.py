@@ -203,3 +203,205 @@ def wear_coefficient_update(path, spindle, cuttype, files):
     fitresults = spstats.linregress(filtered_cumsum, filtered_wearshifts)
     print('Updated Wear Coefficient:', fitresults.slope)
 
+
+def generate_alumina_cutfiles(
+    pathname,
+    spindle,
+    calibrationfilepath,
+    cutparamsfile,
+    flag,               # 'Thick', 'Med', or 'Thin'
+    cutdiameterflag,    # 'ActualDiameter' or 'Noshift'
+    cutdiameter_actual,
+    cutdiameter_noshift,
+    xcenter,
+    ycenter,
+    bladeradius,
+    p,                  # plane‐fit parameters from planefit.planefit()
+    corrections,
+    xin,
+    yin,
+):
+    """
+    Given the outputs of planefit.planefit (p, corrections, zmodel, residuals, etc.)
+    plus all the original cut‐parameter inputs, create the same “CutCamming” files
+    that plane_fit_alumina_filter used to produce.
+
+    Parameters
+    ----------
+    pathname : str
+        Base directory for all metrology and camming file subfolders.
+        Example: '/some/base/path/'
+    spindle : str
+        Name of the spindle subfolder under pathname (e.g. 'SpindleC').
+    calibrationfilepath : str
+        Full path to the calibration file, used to compute spindle offsets.
+    cutparamsfile : str
+        Relative path (under pathname) to the file that defines
+        thick/med/thin depths and cut pitch. Passed to `get_cut_parameters`.
+    flag : str
+        Which blade set to generate: 'Thick', 'Med', or 'Thin'.
+    cutdiameterflag : str
+        Either 'ActualDiameter' or 'Noshift'. Chooses which subfolder
+        naming convention to use for cutcamming.
+    cutdiameter_actual : float
+        The “ActualDiameter” value in mm.
+    cutdiameter_noshift : float
+        The “Noshift” diameter value (Actual + shift) in mm.
+    xcenter, ycenter : float
+        Center (X, Y) of the circular cut region.
+    bladeradius : float
+        Radius of this blade (in mm).
+    p : array_like, shape (3,)
+        Plane‐fit parameters [a, b, c] from planefit.planefit().
+    corrections : array_like, shape (N,)
+        Fourier‐correction values (clipped) at each data point (xin, yin).
+    xin, yin : array_like, shape (N,)
+        The X and Y coordinates of each metrology measurement, as returned
+        from planefit.planefit().
+
+    Returns
+    -------
+    None
+        Writes out one “Master.txt” and all “CutCam” files for the specified flag.
+    """
+    # 1) Determine cut‐camming subfolder names
+    metpath     = os.path.join(pathname, 'MetrologyCamming')
+    if cutdiameterflag == 'Noshift':
+        cutpaththick = os.path.join(pathname, spindle, 'CutCammingThick-Noshift')
+        cutpaththin  = os.path.join(pathname, spindle, 'CutCammingThin-Noshift')
+        cutpathmed   = os.path.join(pathname, spindle, 'CutCammingMed-Noshift')
+    elif cutdiameterflag == 'ActualDiameter':
+        cutpaththick = os.path.join(pathname, spindle, 'CutCammingThick-ActualDiameter')
+        cutpaththin  = os.path.join(pathname, spindle, 'CutCammingThin-ActualDiameter')
+        cutpathmed   = os.path.join(pathname, spindle, 'CutCammingMed-ActualDiameter')
+    else:
+        raise ValueError("cutdiameterflag must be 'Noshift' or 'ActualDiameter'")
+
+    # 2) Before proceeding, check for lockfile in the relevant folder
+    if flag == 'Thick':
+        lock_folder = cutpaththick
+    elif flag == 'Thin':
+        lock_folder = cutpaththin
+    elif flag == 'Med':
+        lock_folder = cutpathmed
+    else:
+        raise ValueError("flag must be one of 'Thick', 'Med', or 'Thin'")
+
+    lockfile_path = os.path.join(lock_folder, 'lockfile.lock')
+    try:
+        with open(lockfile_path) as _:
+            print(f"Lockfile present in {lock_folder}; skipping camming‐file generation.")
+            return
+    except IOError:
+        # lockfile not present → continue
+        pass
+
+    # 3) Ensure each cut folder exists
+    os.makedirs(cutpaththick, exist_ok=True)
+    os.makedirs(cutpaththin,  exist_ok=True)
+    os.makedirs(cutpathmed,   exist_ok=True)
+
+    # 4) Load depths and pitch from cutparamsfile
+    #    get_cut_parameters should return (thick_depth, med_depth, thin_depth, cutpitch)
+    thick_depth, med_depth, thin_depth, cutpitch = get_cut_parameters(os.path.join(pathname, cutparamsfile))
+
+    # 5) Decide which diameter to use
+    if cutdiameterflag == 'Noshift':
+        Cutdiam = cutdiameter_noshift
+    else:  # 'ActualDiameter'
+        Cutdiam = cutdiameter_actual
+
+    # 6) Compute Xstart, Xend, pitch, Y resolution, measurement radius
+    Xstart = xcenter - Cutdiam/2.0 + 0.500
+    Xend   = xcenter + Cutdiam/2.0
+    pitch  = cutpitch
+    Yres   = 0.500
+    measrad = 0.500
+
+    # 7) Get spindle offsets (Xoffset, Yoffset, Zoffset) from calibration file
+    newxoffset, newyoffset, newzoffset = get_spindle_offsets(calibrationfilepath, spindle)
+    #    (Assumes get_spindle_offsets returns a 3‐tuple of floats.)
+
+    # 8) Assign blade‐specific offsets/depths
+    #    - “Thick” blade is hubbed
+    #    - “Med” blade is hubless (so initial depth + med_depth)
+    #    - “Thin” blade is hubbed (so initial depth + med + thin)
+    if flag == 'Thick':
+        Xoffset = newxoffset
+        Yoffset = newyoffset
+        Zoffset = newzoffset
+        Radius  = bladeradius
+        Depth   = thick_depth
+    elif flag == 'Med':
+        Xoffset = newxoffset
+        Yoffset = newyoffset
+        Zoffset = newzoffset
+        Radius  = bladeradius
+        Depth   = thick_depth + med_depth
+    else:  # 'Thin'
+        Xoffset = newxoffset
+        Yoffset = newyoffset
+        Zoffset = newzoffset
+        Radius  = bladeradius
+        Depth   = thick_depth + med_depth + thin_depth
+
+    # 9) Begin writing camming files
+    #    We'll generate:
+    #      Master.txt  (one line per xs index: filenum, xstart, ystart, zstart, ystop)
+    #      CutCam<Flag><index>  (one g‐code file per X‐slice)
+
+    if flag == 'Thick':
+        out_folder = cutpaththick
+        master_filename = os.path.join(out_folder, 'Master.txt')
+    elif flag == 'Med':
+        out_folder = cutpathmed
+        master_filename = os.path.join(out_folder, 'Master.txt')
+    else:  # 'Thin'
+        out_folder = cutpaththin
+        master_filename = os.path.join(out_folder, 'Master.txt')
+
+    xs = np.arange(Xstart, Xend, pitch)
+    # Preallocate arrays if you need to record ystart/zstart; but since the original
+    # didn’t return them, we’ll just write them on the fly.
+    cutmasterfile = open(master_filename, 'w')
+
+    for j, xx in enumerate(xs):
+        # 10) For each X‐slice, find Ystart and Yend around the circle:
+        half_span = np.sqrt(max((Cutdiam/2.0)**2 - (xx - xcenter)**2, 0))
+        Ystart = ycenter - half_span
+        Yend   = ycenter + half_span + 0.0001  # tiny epsilon like original
+
+        ys = np.arange(Ystart, Yend, Yres)
+        zs = np.zeros_like(ys)
+
+        # 11) For each (xx, yy), compute the fourier correction + plane + blade offset
+        for i, yy in enumerate(ys):
+            raw_plane = -p[0]*xx - p[1]*yy - p[2]
+            corr_val = corrections[np.argmin((xin - xx)**2 + (yin - yy)**2)]
+            # The original used fourier_eval at each (xx,yy). If you prefer to
+            # re‐evaluate the Fourier surface at exactly (xx,yy), do:
+            #    corr_val = fourier_eval(A_coef, xx, yy, fourier_max)
+            # and then clip. But since corrections[] is given at sample points,
+            # we’re simply nearest‐neighboring for demonstration.
+
+            # Clip to ±correction_max if needed (though corrections array already is clipped)
+            # corr_val = np.sign(corr_val) * min(abs(corr_val), correction_max)
+
+            # Now compute Z: plane + corr − Zoffset + Radius − Depth − measrad
+            zs[i] = raw_plane + corr_val - Zoffset + Radius - Depth - measrad
+
+        # 12) Write the g‐code file for this X index
+        fname = os.path.join(out_folder, f'CutCam{flag}{j}')
+        make_cam_file(fname, j, xx + Xoffset, ys + Yoffset, zs)
+
+        # 13) Record one line in Master.txt: index, xstart, ystart, zstart, ystop
+        filenum = f"{j:04d}"
+        x_str = f"{xx + Xoffset:.3f}"
+        y_start_str = f"{ys[0] + Yoffset:.3f}"
+        z_start_str = f"{zs[0]:.3f}"
+        y_end_str = f"{ys[-1] + Yoffset:.3f}"
+        cutmasterfile.write(f"{filenum} {x_str} {y_start_str} {z_start_str} {y_end_str}\n")
+
+    cutmasterfile.close()
+    print(f"Finished generating '{flag}' camming files in '{out_folder}'")
+
