@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from pathlib import Path
 from scipy import optimize as opt
 import core_utils as cu
 
@@ -125,7 +126,7 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
             yscam = pts[:, 1]
             zscam = pts[:, 2] + zshift_fixed + cum_wearshift[i] + correction_zshift
 
-            make_cam_file(Path(cname), num, xs[i], yscam, zscam)
+            cu.make_cam_file(Path(cname), num, xs[i], yscam, zscam)
             mfileout.write(f"{linenum} {xsout[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
 
     remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
@@ -153,6 +154,7 @@ def wear_coefficient_update(path, spindle, cuttype, files):
     - No plots are generated.
     """
     # Load initial wear shift data
+    # TODO: change os.path.join to using Pathlib
     testfile = np.loadtxt(os.path.join(path, spindle, files[0]))
     num_lines = len(testfile[:, 0])
     wearshifts = np.zeros(num_lines)
@@ -303,7 +305,7 @@ def generate_alumina_cutfiles(
 
     # 4) Load depths and pitch from cutparamsfile
     #    get_cut_parameters should return (thick_depth, med_depth, thin_depth, cutpitch)
-    thick_depth, med_depth, thin_depth, cutpitch = get_cut_parameters(os.path.join(pathname, cutparamsfile))
+    thick_depth, med_depth, thin_depth, cutpitch = cu.get_cut_parameters(os.path.join(pathname, cutparamsfile))
 
     # 5) Decide which diameter to use
     if cutdiameterflag == 'Noshift':
@@ -319,7 +321,7 @@ def generate_alumina_cutfiles(
     measrad = 0.500
 
     # 7) Get spindle offsets (Xoffset, Yoffset, Zoffset) from calibration file
-    newxoffset, newyoffset, newzoffset = get_spindle_offsets(calibrationfilepath, spindle)
+    newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(calibrationfilepath, spindle)
     #    (Assumes get_spindle_offsets returns a 3‐tuple of floats.)
 
     # 8) Assign blade‐specific offsets/depths
@@ -391,8 +393,8 @@ def generate_alumina_cutfiles(
             zs[i] = raw_plane + corr_val - Zoffset + Radius - Depth - measrad
 
         # 12) Write the g‐code file for this X index
-        fname = os.path.join(out_folder, f'CutCam{flag}{j}')
-        make_cam_file(fname, j, xx + Xoffset, ys + Yoffset, zs)
+        fname = Path(out_folder) / f'CutCam{flag}'
+        cu.make_cam_file(fname, j, xx + Xoffset, ys + Yoffset, zs)
 
         # 13) Record one line in Master.txt: index, xstart, ystart, zstart, ystop
         filenum = f"{j:04d}"
