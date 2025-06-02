@@ -398,10 +398,10 @@ def generate_alumina_cutfiles(
 
         # 13) Record one line in Master.txt: index, xstart, ystart, zstart, ystop
         filenum = f"{j:04d}"
-        x_str = f"{xx + Xoffset:.3f}"
-        y_start_str = f"{ys[0] + Yoffset:.3f}"
-        z_start_str = f"{zs[0]:.3f}"
-        y_end_str = f"{ys[-1] + Yoffset:.3f}"
+        x_str = f"{xx + Xoffset:.7f}"
+        y_start_str = f"{ys[0] + Yoffset:.7f}"
+        z_start_str = f"{zs[0]:.7f}"
+        y_end_str = f"{ys[-1] + Yoffset:.7f}"
         cutmasterfile.write(f"{filenum} {x_str} {y_start_str} {z_start_str} {y_end_str}\n")
 
     cutmasterfile.close()
