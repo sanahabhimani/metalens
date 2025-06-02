@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import optimize as opt
+from scipy import interpolate
 import core_utils as cu
 
 
