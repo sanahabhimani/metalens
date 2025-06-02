@@ -166,10 +166,13 @@ def planefit(filepath, do_plot=True):
             ax.set_title(title)
             ax.set_xlabel("X (mm)")
             ax.set_ylabel("Y (mm)")
-
+        # Plot contour data with scatter plot of xin and yin data overplotted 
         add_contour(fig.add_subplot(1, 4, 1), qingrid, "Data")
+        plt.scatter(xin, yin, color='k')
+        # Plot residuals contour 
         add_contour(fig.add_subplot(1, 4, 2), resgrid, "Plane Residuals")
         add_contour(fig.add_subplot(1, 4, 3), corrgrid, "Correction Residuals")
+        # Plot model surface
         add_contour(fig.add_subplot(1, 4, 4), zmodgrid, "Model Surface")
 
         plt.tight_layout()
