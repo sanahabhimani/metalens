@@ -191,7 +191,7 @@ def generate_planar_files(
     flag,
     correction_max=0.070,
     yres=0.5,
-    measrad=0.5
+    measrad=0.5,
     use_noshift_suffix=True
 ):
     """
