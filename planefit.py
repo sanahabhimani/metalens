@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import optimize as opt
 from scipy import interpolate
+from matplotlib.ticker import FuncFormatter
+
 import core_utils as cu
 
 
