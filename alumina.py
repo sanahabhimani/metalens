@@ -5,6 +5,7 @@ from matplotlib import cm
 from pathlib import Path
 from scipy import optimize as opt
 import core_utils as cu
+import planefit as pf
 
 def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, correction_zshift,
                            wear_coeff, exposureval, lastlinecut, firstline, numlines):
@@ -383,7 +384,7 @@ def generate_alumina_cutfiles(
         # 11) For each (xx, yy), compute the fourier correction + plane + blade offset
         for i, yy in enumerate(ys):
             raw_plane = -p[0]*xx - p[1]*yy - p[2]
-            corr_val = fourier_eval(A_coef, xx, yy, fourier_max)
+            corr_val = pf.fourier_eval(A_coef, xx, yy, fourier_max)
 
             # TODO: FIX: check to see if abs(correction) argument from original code should apply
             corr_val = np.sign(corr_val) * min(abs(corr_val), correction_max)
