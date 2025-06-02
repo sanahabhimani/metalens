@@ -73,9 +73,9 @@ def make_cam_file(filename, filenum, xval, ys, zs):
 
     Parameters
     ----------
-    filename : Path
-        Base path (excluding file number and extension) where the .Cam file will be written.
-        For example: Path('.../CutCamThin') will become CutCamThin0023.Cam, etc.
+    filename : str
+        The base location where cutcamming files are to be housed. 
+        Ex: '/ASO_LAT_Filters/UHF/Surface1/0deg/'
     filenum : int
         The file number, used to generate the specific .Cam filename.
     xval : float
@@ -93,6 +93,7 @@ def make_cam_file(filename, filenum, xval, ys, zs):
     - Master Units (PRIMARY)
     - Slave Units (PRIMARY)
     """
+    filename = Path(filename)
     numstr = f"{int(filenum):04d}"
     numpts = f"{len(ys):04d}"
 
