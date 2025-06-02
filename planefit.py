@@ -178,7 +178,7 @@ def planefit(filepath, do_plot=True):
         plt.tight_layout()
         plt.show()
 
-    return p, corrections, zmodel, residuals, corrected_residuals, xin, yin
+    return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
 
 def generate_planar_files(
