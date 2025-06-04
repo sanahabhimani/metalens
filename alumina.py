@@ -132,7 +132,7 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
             cu.make_cam_file(Path(cname), num, xs[i], yscam, zscam)
             mfileout.write(f"{linenum} {xsout[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
 
-    remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
+    cu.remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
 
 
 def wear_coefficient_update(path, spindle, cuttype, files):
