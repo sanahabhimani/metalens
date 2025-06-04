@@ -113,13 +113,15 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
 
     # Update CAM files and Master.txt
     masterfiledir = f"{directory}{spindle}/{subfolder}/"
-    if os.path.isdir(masterfiledir):
+    if not os.path.isdir(masterfiledir):
+        os.makedirs(masterfiledir)
+    else:
         os.rename(masterfiledir, f"{masterfiledir.rstrip('/')}_UpToLine_{lastlinecut}")
-    os.makedirs(masterfiledir, exist_ok=True)
+        os.makedirs(masterfiledir)
 
     masterfileout = f"{masterfiledir}/Master.txt"
     with open(masterfileout, 'w') as mfileout:
-        for i, num in enumerate(mfile[:, 0]):
+        for i, num in enumerate(mfile[firstline:firstline+numlines, 0]):
             linenum = f"{int(num):04d}"
             fname = f"{cin}{linenum}.Cam"
             cname = f"{directory}{spindle}/{subfolder}/CutCam{ftype}"
