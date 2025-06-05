@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
+import core_utils as cu
+
 
 def find_touch_depth(bladeradius, touchlength):
     """
@@ -173,7 +175,7 @@ def gen_test_touch_points(path, calfilepath, testtouchmetfile, spindle, touchdep
     xdata, ydata, zdata, probedata = metdata[:, 0], metdata[:, 1], metdata[:, 2], metdata[:, 3]
 
     # Get spindle offsets
-    xoffset, yoffset, zoffset = get_spindle_offsets(calfilepath, spindle)
+    xoffset, yoffset, zoffset = cu.get_spindle_offsets(calfilepath, spindle)
 
     # Apply offsets and compute touch positions
     xtouch = xdata + xoffset
