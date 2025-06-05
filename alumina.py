@@ -54,6 +54,7 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
 
     # Load Master and Actual Master data
     mfile = np.loadtxt(masterfilein)
+    nums = mfile[:, 0]
     xs, ys, zs, ystops = mfile[:, 1], mfile[:, 2], mfile[:, 3], mfile[:, 4]
     mfile_actual = np.loadtxt(masterfilein_actual)
     xs_actual, ys_actual, ystops_actual = mfile_actual[:, 1], mfile_actual[:, 2], mfile_actual[:, 4]
@@ -88,6 +89,7 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
     for val in lines2cut:
         if abs(s) >= exposureval:
             print("Blade Limit Line", val)
+            lastline = val
             break
         cum_wearshift[val] = s
         s += wearshiftsarray[val]
@@ -106,22 +108,23 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
 
     # Save wear shift values
     wearfile_path = f"{directory}{spindle}/WearshiftValues_{ftype}.txt"
-    with open(wearfile_path, 'w') as wearfile:
-        for i, shift in enumerate(cum_wearshift):
-            linenum = f"{i:04d}"
-            wearfile.write(f"{linenum} {shift + correction_zshift}\n")
+    wearfileout = open(wearfile_path,'w')
+    for i in range(len(cum_wearshift)):
+        linenum = f"{i:04d}"
+        wearfileout.write(f"{linenum} {cum_wearshift[i] + correction_zshift}\n")
+    wearfileout.close()
 
     # Update CAM files and Master.txt
     masterfiledir = f"{directory}{spindle}/{subfolder}/"
+    masterfileout = f"{masterfiledir}/Master.txt"
     if not os.path.isdir(masterfiledir):
         os.makedirs(masterfiledir)
     else:
         os.rename(masterfiledir, f"{masterfiledir.rstrip('/')}_UpToLine_{lastlinecut}")
         os.makedirs(masterfiledir)
 
-    masterfileout = f"{masterfiledir}/Master.txt"
     with open(masterfileout, 'w') as mfileout:
-        for i, num in enumerate(mfile[firstline:firstline+numlines, 0]):
+        for i, num in enumerate(nums):#mfile[firstline:firstline+numlines, 0]):
             linenum = f"{int(num):04d}"
             fname = f"{cin}{linenum}.Cam"
             cname = f"{directory}{spindle}/{subfolder}/CutCam{ftype}"
@@ -129,7 +132,7 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
             yscam = pts[:, 1]
             zscam = pts[:, 2] + zshift_fixed + cum_wearshift[i] + correction_zshift
 
-            cu.make_cam_file(Path(cname), num, xs[i], yscam, zscam)
+            cu.make_cam_file(cname, num, xs[i], yscam, zscam)
             mfileout.write(f"{linenum} {xsout[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
 
     cu.remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
