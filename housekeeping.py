@@ -177,7 +177,7 @@ def generate_hkcut_files(
 
     # Lockfile check
     lockpath = {'Thick': cutpaththick, 'Thin': cutpaththin, 'Med': cutpathmed}.get(cuttype)
-    cu._check_lockfile(lockpath):
+    cu._check_lockfile(lockpath)
 
     # Make the relevant directories
     for path in (cutpaththick, cutpaththin, cutpathmed):
