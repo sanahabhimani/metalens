@@ -452,6 +452,9 @@ def generate_lens_cut_files(
     xstart = xcenter - radius + x_rot_shift + 0.5
     xend = xcenter + radius
 
+    measdiam = 300
+    xstartmeas = xcenter - measdiam/2.0 + 0.5 # matches original xstartmeas in sawpy lensfit 
+
     depth_dict = {'Thick': thick_depth, 'Med': thick_depth + med_depth, 'Thin': thick_depth + med_depth + thin_depth}
     depth = depth_dict[cuttype]
 
