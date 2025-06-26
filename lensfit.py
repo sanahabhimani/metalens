@@ -111,6 +111,297 @@ def lensfit(
     return p2, cov2, infodict2, mesg2, ier2
 
 
+def Flens(rin, lensparams):
+    """
+    Computes the height of a rotationally symmetric aspheric lens surface 
+    as a function of input radial distance, including correction for a 
+    measurement ball probe.
+
+    The surface is modeled using the standard conic asphere equation with
+    higher-order polynomial terms. A measurement correction is applied to
+    account for the radius and angular effect of a 1 mm measurement ball
+    on the effective radial input.
+
+    Parameters
+    ----------
+    rin : float
+        Input radial distance in mm from the center of the lens.
+    lensparams : array_like
+        List or tuple of 8 parameters:
+            - R : float
+                Radius of curvature (mm).
+            - K : float
+                Conic constant.
+            - A, B, C, D : float
+                Higher-order aspheric coefficients.
+            - Tctr : float
+                Center thickness or vertical offset (mm).
+            - rmax : float
+                Maximum usable radius of the lens (mm).
+
+    Returns
+    -------
+    z : float
+        Height of the lens surface (z-coordinate) at the corrected radial distance.
+        Returns a large sentinel value (9999999) if `rin` exceeds allowed radius.
+    """
+    R = lensparams[0]
+    K = lensparams[1]
+    A = lensparams[2]
+    B = lensparams[3]
+    C = lensparams[4]
+    D = lensparams[5]
+    Tctr = lensparams[6]
+    rmax = lensparams[7] / 2.0  # Half of lens diameter in mm
+
+    r = rin
+
+    # Measurement ball correction (probe has 1.0 mm diameter, radius 0.5 mm)
+    dr = dF(rin, lensparams)
+    theta = np.arctan(dr)
+    r = r - 0.500 * np.sin(theta)
+
+    dr2 = dF(r, lensparams)
+    rr = r + 0.500 * np.sin(np.arctan(dr2))
+
+    if rin > rmax + 500:
+        return 9999999  # Sentinel value for out-of-bounds input
+
+    # Asphere formula with conic section and polynomial terms
+    z = (r**2 / R) / (1 + np.sqrt(1 - (1 + K) * (r / R)**2)) + A * r**2 + B * r**4 + C * r**6 + D * r**8
+
+    return float(z + Tctr + 0.500 * np.cos(theta))
+
+
+def Flrt(p, x, y, afixed, bfixed, lensparams):
+    """
+    Computes the transformed coordinates and height of a point on a rotated lens surface model.
+
+    This function models the lens surface by adjusting for a center offset, applying two fixed
+    rotational angles (a and b), and iteratively refining the position and height through two
+    iterations of rotation and re-evaluation using the lens profile function `Flens`.
+
+    Parameters
+    ----------
+    p : array_like
+        Optimization parameters. Expected to be of the form [x0, y0, z0, a, b], where:
+            - x0, y0 : float
+                Translation offsets for the lens center.
+            - z0 : float
+                Vertical offset for the lens surface.
+            - a, b : float
+                Rotation angles about the y-axis and x-axis, respectively (will be overwritten by afixed and bfixed).
+    x : float
+        Measured x-coordinate.
+    y : float
+        Measured y-coordinate.
+    afixed : float
+        Fixed rotation angle around the y-axis (overrides `a` in `p`).
+    bfixed : float
+        Fixed rotation angle around the x-axis (overrides `b` in `p`).
+    lensparams : dict or tuple
+        Parameters required by the lens profile function `Flens`, which models surface height as a function of radius.
+
+    Returns
+    -------
+    xn4 : float
+        Final x-coordinate after two iterations of rotation correction.
+    yn4 : float
+        Final y-coordinate after two iterations of rotation correction.
+    zn4 : float
+        Final z-coordinate (height) after two iterations of rotation correction.
+    """
+    # p vector is [x0, y0, z0, a, b]
+    x0 = p[0]
+    y0 = p[1]
+    z0 = p[2]
+    a = afixed  # override input a
+    b = bfixed  # override input b
+
+    xmod = x - x0
+    ymod = y - y0
+
+    # First iteration
+    r1 = np.sqrt(xmod**2 + ymod**2)
+    z1 = Flens(r1, lensparams) + z0
+
+    A = np.mat([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    B = np.mat([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
+
+    pt = np.mat([[xmod], [ymod], [z1]])
+    newpt = A @ B @ pt
+    x2, y2, z2 = newpt
+
+    dx1 = float(x2 - xmod)
+    dy1 = float(y2 - ymod)
+    xn1 = float(xmod - dx1)
+    yn1 = float(ymod - dy1)
+    rn1 = np.sqrt(xn1**2 + yn1**2)
+    zn1 = Flens(rn1, lensparams) + z0
+
+    ptn1 = np.mat([[xn1], [yn1], [zn1]])
+    newptn1 = A @ B @ ptn1
+    xn2, yn2, zn2 = newptn1
+
+    dx = float(xn2 - xmod)
+    dy = float(yn2 - ymod)
+    xn3 = float(xn1 - dx)
+    yn3 = float(yn1 - dx)
+    rn3 = np.sqrt(xn3**2 + yn3**2)
+    zn3 = Flens(rn3, lensparams) + z0
+
+    ptn3 = np.mat([[xn3], [yn3], [zn3]])
+    newptn3 = A @ B @ ptn3
+
+    xn4, yn4, zn4 = newptn3
+
+    return float(xn4), float(yn4), float(zn4)
+
+
+def F(p, x, y, q, afixed, bfixed, lensparams):
+    """
+    Vectorized residual function used for lens surface fitting.
+
+    This function evaluates the residuals between measured data points and a modeled lens surface.
+    It uses the `Flrt` function to compute model predictions based on the current parameters `p`
+    and subtracts these predictions from the observed values `q`.
+
+    Parameters
+    ----------
+    p : array_like
+        Optimization parameters, where `p[0]` and `p[1]` are adjustments to the x and y positions.
+    x : array_like
+        x-coordinates of the measured data points.
+    y : array_like
+        y-coordinates of the measured data points.
+    q : array_like
+        Observed z-values (e.g., measured surface heights).
+    afixed : float
+        Fixed parameter representing a known component of the optical surface model in x-direction.
+    bfixed : float
+        Fixed parameter representing a known component of the optical surface model in y-direction.
+    lensparams : dict or tuple
+        Additional parameters required by the `Flrt` function to model the lens surface.
+
+    Returns
+    -------
+    outs : ndarray
+        Residuals between observed z-values and model predictions.
+    """
+    outs = np.zeros(len(x))
+    xouts = np.zeros(len(x))
+    youts = np.zeros(len(x))
+    for i, val in enumerate(x):
+        xout, yout, z = Flrt(p, x[i], y[i], afixed, bfixed, lensparams)
+        xouts[i] = xout - x[i] + p[0]
+        youts[i] = yout - y[i] + p[1]
+        outs[i] = q[i] - z
+    return outs
+
+
+################ Rotate Data Method Functions Below, Originally Described as a "New" Comparison Method ##############
+def Fnew(p, x, y, q, afixed, bfixed, lensparams):
+    """
+    Residual function for the "new" fitting method, where data points are rotated 
+    into the model frame instead of rotating the model.
+
+    This method applies inverse rotations (negative angles) to the data point 
+    (x, y, q), transforming it into the coordinate frame of the unrotated lens model.
+    The function returns the residual between the rotated data height and the 
+    predicted model height at that radial distance.
+
+    Parameters
+    ----------
+    p : array_like
+        Optimization parameters. Expected to be of the form [x0, y0, z0, a, b], where:
+            - x0, y0 : float
+                Translation offsets to align data with the model center.
+            - z0 : float
+                Vertical offset for the lens surface.
+            - a, b : float
+                Rotation angles about the y-axis and x-axis (applied with a negative sign to rotate data into model frame).
+    x : float
+        Measured x-coordinate of the data point.
+    y : float
+        Measured y-coordinate of the data point.
+    q : float
+        Measured surface height (z-coordinate) of the data point.
+    afixed : float
+        Unused in this method but included for interface consistency.
+    bfixed : float
+        Unused in this method but included for interface consistency.
+    lensparams : dict or tuple
+        Parameters passed to the `Flens` function to define the lens profile.
+
+    Returns
+    -------
+    residual : float
+        Difference between the rotated data height and the predicted model height 
+        at the corresponding radial distance from the model center.
+    """
+    x0 = p[0]
+    y0 = p[1]
+    z0 = p[2]
+    a = -p[3]
+    b = -p[4]
+
+    A = np.mat([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    B = np.mat([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
+
+    pt = np.mat([[x - x0], [y - y0], [q]])  # Rotate then translate
+    newpt = A * B * pt
+    xr = float(newpt[0])
+    yr = float(newpt[1])
+    zr = float(newpt[2])
+
+    r = np.sqrt(xr**2 + yr**2)
+    zmod = Flens(r, lensparams) + z0
+
+    return zr - zmod
+
+
+def FuncNew(p, x, y, q, afixed, bfixed, lensparams):
+    """
+    Vectorized residual function for the "new" fitting method, where data points 
+    are rotated into the lens model frame before evaluating surface height residuals.
+
+    This function applies the `Fnew` routine to a set of (x, y, q) measurements, computing 
+    the difference between each rotated data point's height and the corresponding model 
+    prediction from the aspheric lens surface.
+
+    Parameters
+    ----------
+    p : array_like
+        Optimization parameters. Expected to be of the form [x0, y0, z0, a, b], where:
+            - x0, y0 : float
+                Translation offsets.
+            - z0 : float
+                Vertical offset.
+            - a, b : float
+                Rotation angles (in radians) about the y- and x-axes, respectively.
+    x : array_like
+        x-coordinates of the measured data points.
+    y : array_like
+        y-coordinates of the measured data points.
+    q : array_like
+        z-values (measured heights) of the data points.
+    afixed : float
+        Unused in this method but included for interface consistency.
+    bfixed : float
+        Unused in this method but included for interface consistency.
+    lensparams : dict or tuple
+        Parameters passed to the `Flens` function to define the lens profile.
+
+    Returns
+    -------
+    outs : ndarray
+        Array of residuals between each rotated data height and model-predicted height.
+    """
+    outs = np.zeros(len(x))
+    for i, val in enumerate(x):
+        outs[i] = Fnew(p, x[i], y[i], q[i], afixed, bfixed, lensparams)
+    return outs
+
 
 def generate_lens_cut_files(
     p,
