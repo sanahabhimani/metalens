@@ -113,8 +113,8 @@ def lensfit(
 
 def Flens(rin, lensparams):
     """
-    Computes the height of a rotationally symmetric aspheric lens surface 
-    as a function of input radial distance, including correction for a 
+    Computes the height of a rotationally symmetric aspheric lens surface
+    as a function of input radial distance, including correction for a
     measurement ball probe.
 
     The surface is modeled using the standard conic asphere equation with
@@ -336,7 +336,7 @@ def Fnew(p, x, y, q, afixed, bfixed, lensparams):
     Returns
     -------
     residual : float
-        Difference between the rotated data height and the predicted model height 
+        Difference between the rotated data height and the predicted model height
         at the corresponding radial distance from the model center.
     """
     x0 = p[0]
@@ -362,11 +362,11 @@ def Fnew(p, x, y, q, afixed, bfixed, lensparams):
 
 def FuncNew(p, x, y, q, afixed, bfixed, lensparams):
     """
-    Vectorized residual function for the "new" fitting method, where data points 
+    Vectorized residual function for the "new" fitting method, where data points
     are rotated into the lens model frame before evaluating surface height residuals.
 
-    This function applies the `Fnew` routine to a set of (x, y, q) measurements, computing 
-    the difference between each rotated data point's height and the corresponding model 
+    This function applies the `Fnew` routine to a set of (x, y, q) measurements, computing
+    the difference between each rotated data point's height and the corresponding model
     prediction from the aspheric lens surface.
 
     Parameters
@@ -449,7 +449,7 @@ def generate_lens_cut_files(
     xcenter = p[0]
     ycenter = p[1]
     radius = cutdiameter / 2.0
-    xstart = xcenter - radius + x_rot_shift
+    xstart = xcenter - radius + x_rot_shift + 0.5
     xend = xcenter + radius
 
     depth_dict = {'Thick': thick_depth, 'Med': thick_depth + med_depth, 'Thin': thick_depth + med_depth + thin_depth}
