@@ -48,7 +48,6 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
 
     if os.path.isfile(lockfile):
         print("Lockfile present")
-        return
     else:
         print("Lockfile not present")
 
