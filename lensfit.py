@@ -529,7 +529,8 @@ def dF(rin, lensparams):
 
     return dz
 
-###################################### Plane Fit for Flange ##########################################
+###################################### Plane Helper Functions ##########################################
+# TODO: Implement all use cases of stepheight/plane helper functions here for correct cut cam file generation
 def fit_flange(path, flangemetfile):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
@@ -624,6 +625,101 @@ def fit_flange(path, flangemetfile):
     plt.show()
 
     return -p[0], -p[1]
+
+
+def PlaneNoball(p, x, y, lensparams, stepheight):
+    """
+    Compute the (x, y, z) position on a lens surface (without a ball term),
+    applying two iterations of rotation and center offset correction.
+
+    This function uses a geometric model of a lens surface defined by aspheric
+    parameters and simulates the effect of decentering and tilting in both
+    X and Y directions. The rotation is applied iteratively to improve accuracy.
+
+    Parameters
+    ----------
+    p : list or array-like
+        Parameter vector [x0, y0, z0, a, b], where:
+            x0, y0 : center offsets in mm
+            z0     : vertical shift (height offset)
+            a      : tilt about the X-axis (in radians)
+            b      : tilt about the Y-axis (in radians)
+    x : float
+        X-coordinate of the point (in mm) to evaluate.
+    y : float
+        Y-coordinate of the point (in mm) to evaluate.
+    lensparams : list
+        Lens surface parameters in the form:
+            [R, K, A, B, C, D, Tctr, Diam]
+            R     : Radius of curvature (1/c)
+            K     : Conic constant
+            A–D   : Aspheric coefficients
+            Tctr  : Center thickness
+            Diam  : Full lens diameter
+    stepheight : float
+        Step height value to subtract from the reference surface (in mm).
+
+    Returns
+    -------
+    tuple of float
+        The rotated and offset-corrected coordinates (x_out, y_out, z_out) in mm.
+
+    Notes
+    -----
+    - The function evaluates the sag of the lens at its outermost radius (Diam/2),
+      then subtracts the step height and adds 0.100 mm as an empirical adjustment.
+    - Two full iterations of rotational correction are applied.
+    - Your system uses a coordinate convention where x and y roles are reversed
+      compared to standard mathematical notation; this is respected as-is.
+    """
+    zout = FlensNoball(lensparams[7] / 2.0, lensparams) - stepheight + 0.100
+
+    x0, y0, z0, a, b = p
+    xmod = x - x0
+    ymod = y - y0
+
+    r1 = np.sqrt(xmod**2 + ymod**2)
+    z1 = zout + z0
+
+    # Rotation matrices (as np.array)
+    A = np.array([
+        [1, 0, 0],
+        [0, np.cos(a), -np.sin(a)],
+        [0, np.sin(a),  np.cos(a)]
+    ])
+    B = np.array([
+        [np.cos(b), 0, -np.sin(b)],
+        [0,         1, 0],
+        [np.sin(b), 0,  np.cos(b)]
+    ])
+
+    pt = np.array([[xmod], [ymod], [z1]])
+    newpt = A @ B @ pt
+    x2, y2, z2 = newpt.flatten()
+
+    dx1 = x2 - xmod
+    dy1 = y2 - ymod
+    xn1 = xmod - dx1
+    yn1 = ymod - dy1
+    rn1 = np.sqrt(xn1**2 + yn1**2)
+    zn1 = zout + z0
+
+    ptn1 = np.array([[xn1], [yn1], [zn1]])
+    newptn1 = A @ B @ ptn1
+    xn2, yn2, zn2 = newptn1.flatten()
+
+    dx = xn2 - xmod
+    dy = yn2 - ymod
+    xn3 = xn1 - dx
+    yn3 = yn1 - dx  # Your coordinate convention: intentionally reusing dx here
+    rn3 = np.sqrt(xn3**2 + yn3**2)
+    zn3 = zout + z0
+
+    ptn3 = np.array([[xn3], [yn3], [zn3]])
+    newptn3 = A @ B @ ptn3
+    xn4, yn4, zn4 = newptn3.flatten()
+
+    return float(xn4), float(yn4), float(zn4)
 
 
 def generate_lens_cut_files(
