@@ -189,6 +189,36 @@ def gen_test_touch_points(path, calfilepath, testtouchmetfile, spindle, touchdep
             f.write(f"{i:04d} {x} {y} {z}\n")
 
 
+def rename_tt_lines(input_file, output_file, shift_amount):
+    """
+    Shift the first column (line number) in a 4-column test touch file by a specified amount,
+    formatting the result as a 4-digit zero-padded string (e.g., 0001, 0002, ...).
+
+    Raises an error if any line does not have exactly 4 columns.
+
+    Parameters
+    ----------
+    input_file : str
+        Path to the original test touch file.
+    output_file : str
+        Path to save the updated file.
+    shift_amount : int
+        Amount to shift the first column (line number) by.
+    """
+    with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
+        for lineno, line in enumerate(f_in, 1):
+            parts = line.strip().split()
+
+            if len(parts) != 4:
+                raise ValueError(f"Line {lineno} does not have exactly 4 columns: {line.strip()}")
+
+            # Shift and pad the first column
+            shifted_number = int(parts[0]) + shift_amount
+            parts[0] = f"{shifted_number:04d}"
+
+            f_out.write(' '.join(parts) + '\n')
+
+
 def get_cam_test_touch_pick_ypoint(path, spindle, cuttype, noshiftflag,
                                     cutdepth, touchdepth, linenumber, wearshift, ypoint):
     """
@@ -218,7 +248,7 @@ def get_cam_test_touch_pick_ypoint(path, spindle, cuttype, noshiftflag,
     suffix = f"-{noshiftflag}" if noshiftflag == 'Noshift' else ''
     camnum = f"{int(linenumber):04d}"
     subfolder = f"CutCamming{cuttype}{suffix}"
-    
+
     masterpath = os.path.join(path, spindle, subfolder, 'Master.txt')
     campath = os.path.join(path, spindle, subfolder, f"CutCam{cuttype}{camnum}.Cam")
 
