@@ -403,6 +403,106 @@ def FuncNew(p, x, y, q, afixed, bfixed, lensparams):
     return outs
 
 
+def FlensNoball(rin, lensparams):
+    """
+    Compute the sag of a rotationally symmetric aspheric lens surface (excluding ball lens shape)
+    at a given radial position from the center.
+
+    Parameters
+    ----------
+    rin : float
+        Radial distance from the center of the lens, in millimeters.
+    lensparams : array-like
+        Lens parameters in the following order:
+            [0] R     : Radius of curvature (mm)
+            [1] K     : Conic constant
+            [2] A     : 2nd order aspheric coefficient (mm^-1)
+            [3] B     : 4th order aspheric coefficient (mm^-3)
+            [4] C     : 6th order aspheric coefficient (mm^-5)
+            [5] D     : 8th order aspheric coefficient (mm^-7)
+            [6] Tctr  : Center thickness of the lens (mm)
+            [7] Diam  : Lens diameter (mm), used to compute max usable radius
+
+    Returns
+    -------
+    float
+        Sag (surface height) at radial position `rin` in mm.
+
+    Notes
+    -----
+    - If `rin` exceeds `rmax + 500`, the function returns a large float (5,000,000) 
+      to indicate invalid input or safeguard against unphysical values.
+    - The surface equation follows the standard aspheric surface formula:
+        z(r) = (r^2 / R) / (1 + sqrt(1 - (1 + K)(r/R)^2)) + A*r^2 + B*r^4 + C*r^6 + D*r^8 + Tctr
+    """
+    R, K, A, B, C, D, Tctr, Diam = lensparams
+    rmax = Diam / 2.0  # Convert diameter to radius in mm
+    r = rin
+
+    if rin > rmax + 500:
+        return 5_000_000  # Safety return for unphysically large inputs
+
+    base = (r**2 / R) / (1 + np.sqrt(1 - (1 + K) * (r / R)**2))
+    poly = A * r**2 + B * r**4 + C * r**6 + D * r**8
+    z = base + poly + Tctr
+
+    return float(z)
+
+
+def dF(rin, lensparams):
+    """
+    Compute the numerical derivative of the lens sag function with respect to radial distance.
+
+    This function approximates dF/dr using central differencing by evaluating the lens profile
+    at `rin - h` and `rin + h`. If `rin` exceeds `rmax + 500`, the function returns 0.
+
+    Parameters
+    ----------
+    rin : float
+        Radial distance from the center of the lens, in millimeters.
+    lensparams : array-like
+        Lens parameters in the following order:
+            [0] R     : Radius of curvature
+            [1] K     : Conic constant
+            [2] A     : 4th order aspheric coefficient
+            [3] B     : 6th order aspheric coefficient
+            [4] C     : 8th order aspheric coefficient
+            [5] D     : 10th order aspheric coefficient
+            [6] Tctr  : Center thickness (unused)
+            [7] Diam  : Maximum diameter of the lens (used to compute rmax)
+
+    Returns
+    -------
+    float
+        Approximate derivative dF/dr at `rin`.
+
+    Notes
+    -----
+    - A closed-form `dz` formula is defined but then immediately replaced by a numerical estimate.
+    - The lens profile is evaluated using an external function `FlensNoball`, which must be defined elsewhere.
+    - Assumes `rin` and all parameters are in millimeters.
+
+    """
+    R, K, A, B, C, D, Tctr, Diam = lensparams
+    rmax = Diam / 2.0  # Diameter to radius
+
+    r = float(rin)
+
+    if rin > rmax + 500:
+        return 0  # Safeguard against invalid large radius inputs
+
+    # NOTE: Analytical expression is calculated but not used
+    # dz = r / (np.sqrt(R**2 - (K + 1) * r**2)) + 4*A*r**3 + 6*B*r**5 + 8*C*r**7 + 8*D*r**7
+
+    # Use central difference to compute derivative numerically
+    h = 0.0001  # Small step size in mm
+    Fl = FlensNoball(rin - h, lensparams)
+    Fr = FlensNoball(rin + h, lensparams)
+    dz = -(Fr - Fl) / (2.0 * h)
+
+    return dz
+
+###################################### Plane Fit for Flange ##########################################
 def fit_flange(path, flangemetfile):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
