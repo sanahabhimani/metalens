@@ -9,106 +9,133 @@ from core_utils import get_cut_parameters, get_spindle_offsets, make_cam_file
 from pathlib import Path
 
 
+
 def lensfit(
     pathname,
-    spindle,
-    calibrationfilepath,
     metrologyfilename,
     lensparams,
     afixed,
     bfixed,
-    stepheight,
-    cutdiameter,
-    x_rot_shift,
-    plot=True
+    plot=True,
+    return_full=False,
+    verbose=True
 ):
     """
-    Fit a lens surface using least squares and return the best-fit parameters.
+    Perform lens surface fitting using two techniques: direct fit and rotated fit.
+    Matches the SawPy fitting behavior, excluding all file writing and cutting logic.
 
     Parameters
     ----------
     pathname : str
         Path to the directory containing metrology data.
-    spindle : str
-        Spindle name used for path construction and calibration lookup.
-    calibrationfilepath : str
-        Path to the spindle calibration file.
     metrologyfilename : str
         Name of the metrology data file (CSV).
-    lensparams : tuple
-        Parameters defining the lens surface.
+    lensparams : list
+        Lens surface parameters [R, K, A, B, C, D, Tctr, Diam].
     afixed, bfixed : float
-        Fixed tilt parameters for the initial guess.
-    stepheight : float
-        Step height parameter used in plane fitting.
-    cutdiameter : float
-        Diameter of the desired lens cut.
-    x_rot_shift : float
-        Optional shift in X to be applied.
-    plot : bool, default=True
-        Whether to generate plots for data, residuals, and model.
+        Fixed rotation values used in both fitting techniques.
+    plot : bool, optional
+        Whether to generate contour plots of data, residuals, and model surface.
+    return_full : bool, optional
+        Whether to return full least-squares diagnostic output from the first fit.
+    verbose : bool, optional
+        Whether to print detailed least-squares diagnostics to stdout.
 
     Returns
     -------
-    p2 : ndarray
-        Best-fit parameters for the lens surface.
-    cov2 : ndarray
-        Covariance of the fit.
-    infodict2 : dict
-        Diagnostic information from least squares.
-    mesg2 : str
-        Optimization status message.
-    ier2 : int
-        Integer flag indicating the reason for termination.
+    If return_full is False:
+        p : ndarray
+            Best-fit parameters from the F-based model.
+        p2 : ndarray
+            Best-fit parameters from the FuncNew-based model.
+    If return_full is True:
+        p, p2, cov, infodict, mesg, ier
+            Full leastsq diagnostic output from the F-based model in addition.
     """
+    # 1. Load metrology data
     pts = np.loadtxt(pathname + metrologyfilename, delimiter=',')
     xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
     qin = zin + r
 
+    # 2. Initial guess [x0, y0, z0, afixed, bfixed]
     p0 = [83.255, 365.741, -40, afixed, bfixed]
 
-    p, *_ = opt.leastsq(F, p0, args=(xin, yin, qin, afixed, bfixed, lensparams), ftol=1e-14, xtol=1e-14, diag=(1, 1, 1, 10, 10))
+    # 3. Fit 1: Standard least-squares fit (F)
+    p, cov, infodict, mesg, ier = opt.leastsq(
+        F, p0, args=(xin, yin, qin, afixed, bfixed, lensparams),
+        full_output=1, ftol=1e-14, xtol=1e-14, diag=(1, 1, 1, 10, 10)
+    )
+    resids = infodict['fvec']
+
+    # 4. Fit 2: Rotated least-squares fit (FuncNew)
     p2, cov2, infodict2, mesg2, ier2 = opt.leastsq(
         FuncNew, p0, args=(xin, yin, qin, afixed, bfixed, lensparams),
-        full_output=1, ftol=1e-14, xtol=1e-14, diag=(1, 1, 1, 10, 10))
+        full_output=1, ftol=1e-14, xtol=1e-14, diag=(1, 1, 1, 10, 10)
+    )
 
+    # 5. Verbose diagnostic printout
+    if verbose:
+        print("\nP1 (F):", p)
+        print("P2 (FuncNew):", p2)
+        print("Diff:", p2 - p)
+
+        print("\n--- Least Squares Fit Diagnostics ---")
+        print("ier (exit code):", ier)
+        print("mesg (termination message):", mesg)
+        print("infodict keys:", list(infodict.keys()))
+        print("Sample values:")
+        for k in ['ipvt', 'qtf']:
+            if k in infodict:
+                print(f"{k}: {infodict[k]}")
+        print("--------------------------------------\n")
+
+    # 6. Evaluate model surface using the first fit (F)
     xouts, youts, zmodels, modelresids = [], [], [], []
     for xval, yval, qval in zip(xin, yin, qin):
         xout, yout, zmodel = Flrt(p, xval, yval, afixed, bfixed, lensparams)
         xouts.append(xout - xval + p[0])
         youts.append(yout - yval + p[1])
+        zmodels.append(zmodel)
         modelresids.append(zmodel - qval)
+
     xouts, youts, zmodels, modelresids = map(np.array, (xouts, youts, zmodels, modelresids))
 
+    # 7. Plotting
     if plot:
         fig = plt.figure(figsize=(12, 4))
         xgrid = np.linspace(xin.min(), xin.max(), 300)
         ygrid = np.linspace(yin.min(), yin.max(), 300)
         xoutgrid, youtgrid = np.meshgrid(xgrid, ygrid)
+
         qingrid = interpolate.griddata((xin, yin), qin, (xoutgrid, youtgrid), method='linear')
-        residsgrid = interpolate.griddata((xin, yin), modelresids, (xoutgrid, youtgrid), method='linear')
+        residsgrid = interpolate.griddata((xin, yin), resids, (xoutgrid, youtgrid), method='linear')
         zmodelsgrid = interpolate.griddata((xin, yin), zmodels, (xoutgrid, youtgrid), method='linear')
 
         ax = fig.add_subplot(1, 3, 1, aspect='equal')
-        ax.set_title('Data')
         cax = ax.contourf(xgrid, ygrid, qingrid, 40, cmap=cm.jet)
         fig.colorbar(cax)
+        plt.scatter(xin, yin, color='k')
+        ax.set_title('Data')
 
         ax = fig.add_subplot(1, 3, 2, aspect='equal')
-        ax.set_title('Residuals')
         cax = ax.contourf(xgrid, ygrid, residsgrid, 40, cmap=cm.jet)
         fig.colorbar(cax)
+        ax.set_title('Residuals')
 
         ax = fig.add_subplot(1, 3, 3, aspect='equal')
-        ax.set_title('Model Values')
         cax = ax.contourf(xgrid, ygrid, zmodelsgrid, 40, cmap=cm.jet)
         fig.colorbar(cax)
+        ax.set_title('Model Values')
 
         plt.tight_layout()
         plt.savefig(pathname + 'Residuals.png', bbox_inches='tight')
         plt.show()
 
-    return p2, cov2, infodict2, mesg2, ier2
+    # 8. Return
+    if return_full:
+        return p, p2, cov, infodict, mesg, ier
+    else:
+        return p, p2
 
 
 def Flens(rin, lensparams):
