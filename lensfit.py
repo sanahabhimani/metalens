@@ -403,6 +403,102 @@ def FuncNew(p, x, y, q, afixed, bfixed, lensparams):
     return outs
 
 
+def fit_flange(path, flangemetfile):
+    """
+    Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
+    in two directions (around X and Y axes), and return the negative rotation angles.
+
+    Parameters
+    ----------
+    path : str
+        Path to the directory containing the flange metrology file.
+    flangemetfile : str
+        Filename of the flange metrology .csv/.dat/.txt file.
+
+    Returns
+    -------
+    tuple of float
+        Negative rotation angles (a, b) in radians about the X and Y axes respectively.
+
+    Notes
+    -----
+    - The metrology file must be a file with four columns: X, Y, Z, and gauge offset (r).
+    - The fit minimizes Z + r using a rotated coordinate system.
+    - Assumes small angles for a and b (on the order of 10^-4).
+    - The model previously used a function F(x, y) that returned a constant 0.5 
+      as a flat surface offset. This has been inlined directly into the return statement.
+    """
+    flangemetpath = path + flangemetfile
+    pts = np.loadtxt(flangemetpath, delimiter=',')
+
+    xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
+    qin = zin + r
+
+    # Initial guess for parameters: [a, b, x0, y0, z0]
+    p0 = [0, 0, 0, 0, 0]
+
+    def planefit(p, x, y, q):
+        """Model function returning rotated Z values for least squares fitting."""
+        a, b, x0, y0, z0 = p
+        A = np.array([[1, 0, 0],
+                      [0, np.cos(a), -np.sin(a)],
+                      [0, np.sin(a),  np.cos(a)]])
+        B = np.array([[ np.cos(b), 0, -np.sin(b)],
+                      [0,          1, 0],
+                      [np.sin(b),  0, np.cos(b)]])
+
+        xm, ym, qm = x - x0, y - y0, q - z0
+        pts = np.vstack((xm, ym, qm))  # shape (3, N)
+        rotated_pts = A @ B @ pts
+        zp = rotated_pts[2, :]
+
+        # Originally: outs[i] = zp + F(xp, yp) with F(x, y) = 0.5
+        # Inlined as a constant surface offset:
+        return zp + 0.5
+
+    # Fit the model
+    p, cov, infodict, mesg, ier = opt.leastsq(
+        planefit,
+        p0,
+        args=(xin, yin, qin),
+        full_output=1,
+        ftol=1e-14,
+        xtol=1e-14,
+        diag=(100, 100, 1, 1, 1)
+    )
+
+    resids = infodict['fvec']
+
+    print('Fitting...')
+    print(f'Angles: a = {-p[0]:.6e}, b = {-p[1]:.6e}')
+    print('Check that the angle values are of order 10^-4')
+
+    # Plotting
+    fig = plt.figure(figsize=(15, 5))
+
+    ax = fig.add_subplot(1, 3, 1, projection='3d')
+    ax.plot_trisurf(xin, yin, qin, cmap=cm.jet, linewidth=0.2)
+    ax.set_title('Data')
+
+    ax = fig.add_subplot(1, 3, 2, projection='3d')
+    ax.plot_trisurf(xin, yin, resids, cmap=cm.jet, linewidth=0.2)
+    ax.set_title('Residual Errors')
+    ax.set_xlabel('X (mm)')
+    ax.set_ylabel('Y (mm)')
+    ax.set_zlabel('Z residual (mm)')
+
+    ax = fig.add_subplot(1, 3, 3, projection='3d')
+    ax.plot_trisurf(xin, yin, r, cmap=cm.jet, linewidth=0.2)
+    ax.set_title('Gauge Readout')
+    ax.set_xlabel('X (mm)')
+    ax.set_ylabel('Y (mm)')
+
+    plt.tight_layout()
+    plt.show()
+
+    return -p[0], -p[1]
+
+
 def generate_lens_cut_files(
     p,
     pathname,
