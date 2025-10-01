@@ -808,3 +808,115 @@ def generate_lens_cut_files(
         measrad=measrad
     )
 
+def shiftZ_silicon(directory, spindle, ftype, zshift,
+                   lastlinecut, firstline, numlines):
+    """
+    Applies Z shift corrections to CAM files by copying them from the 
+    `CutCamming{ftype}-Final` folder into a fresh `CutCamming{ftype}` 
+    folder, modifying only the specified line range. Generates a new 
+    Master.txt and writes a unique log file under .../{spindle}/Logs/.
+
+    Args:
+        directory: str
+            Base directory containing spindle subfolders.
+        spindle: str
+            Identifier for the spindle (e.g., "SpindleC").
+        ftype: str
+            CAM file type (e.g., "Thin", "Thick").
+        zshift: float
+            Amount to shift Z values (applied only to lines in the target range).
+        lastlinecut: int
+            Index of the last line cut in the previous run (used for backup naming).
+        firstline: int
+            First line number in the range of lines to shift.
+        numlines: int
+            Number of lines to process starting from `firstline`.
+
+    Returns:
+        None
+            The function modifies files on disk and writes a log file. 
+    """
+
+    # ---- Paths (source vs destination) ----
+    subfolder_src = f'CutCamming{ftype}-Final'   # source (originals live here)
+    subfolder_out = f'CutCamming{ftype}'           # destination (new output)
+
+    camname = f"{directory}{spindle}/{subfolder_out}/CutCam{ftype}"   # destination base
+    cin     = f"{directory}{spindle}/{subfolder_src}/CutCam{ftype}"   # source base
+
+    masterfilein  = f"{directory}{spindle}/{subfolder_src}/Master.txt"   # read from -Shifted
+    masterfiledir = f"{directory}{spindle}/{subfolder_out}/"             # write to new folder
+    masterfileout = f"{masterfiledir}/Master.txt"
+
+    # ---- Logging setup (unique file per run) ----
+    logs_dir = f"{directory}{spindle}/Logs"
+    os.makedirs(logs_dir, exist_ok=True)
+    tstamp = datetime.now().strftime("%Y%m%d_%H%M")
+    line_start = int(firstline)
+    line_end   = int(firstline + numlines - 1)
+    logfile = (
+        f"{logs_dir}/ShiftZ_{ftype}_{line_start:04d}to{line_end:04d}.log")
+
+    lockfile = f"{directory}{spindle}/{subfolder_out}/lockfile.lock"
+    print("Lockfile present" if os.path.isfile(lockfile) else "Lockfile not present")
+
+    # ---- Load Master from source ----
+    mfile = np.loadtxt(masterfilein)
+    if mfile.ndim == 1:
+        mfile = mfile.reshape(1, -1)
+    nums = mfile[:, 0].astype(int)
+    xs, ys, zs, ystops = mfile[:, 1], mfile[:, 2], mfile[:, 3], mfile[:, 4]
+
+    # ---- Back up existing destination folder if present ----
+    if os.path.isdir(masterfiledir):
+        os.rename(masterfiledir, f"{masterfiledir.rstrip('/')}_UpToLine_{lastlinecut}")
+    os.makedirs(masterfiledir, exist_ok=True)
+
+    # ---- Decide which lines to modify ----
+    mask = (nums >= line_start) & (nums <= line_end)
+
+    # ---- Prepare Z output: apply zshift only within the window ----
+    zsout = zs.copy()
+    zsout[mask] = zsout[mask] + zshift
+
+    # ---- Update CAM files (from -final) and write new Master.txt ----
+    updated_lines = []  # for logging
+    with open(masterfileout, 'w') as mfileout:
+        for i, num in enumerate(nums):
+            linenum = f"{int(num):04d}"
+            src_cam = f"{cin}{linenum}.Cam"                    # read source CAM
+            dst_base = f"{directory}{spindle}/{subfolder_out}/CutCam{ftype}"  # write dest CAM
+
+            pts = np.loadtxt(src_cam, skiprows=4)
+            if pts.ndim == 1:
+                pts = pts.reshape(1, -1)
+            yscam = pts[:, 1]
+            if mask[i]:
+                zscam = pts[:, 2] + zshift                      # only apply zshift
+                updated_lines.append((int(num), src_cam, f"{dst_base}{linenum}.Cam", zshift))
+            else:
+                zscam = pts[:, 2]                               # no shift for untouched lines
+                updated_lines.append((int(num), src_cam, f"{dst_base}{linenum}.Cam", 0.0))
+
+            cu.make_cam_file(dst_base, num, xs[i], yscam, zscam)
+
+            # Always write Master; Z updated only where mask=True
+            mfileout.write(f"{linenum} {xs[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
+
+    # ---- Trim processed lines for downstream workflow ----
+    cu.remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
+
+    # ---- Write log (unique, non-overwriting) ----
+    with open(logfile, "w") as lf:
+        lf.write("=== shiftZ_silicon run log ===\n")
+        lf.write(f"Timestamp (Date--HHMM)     : {tstamp}\n")
+        lf.write(f"Spindle                    : {spindle}\n")
+        lf.write(f"Type (ftype)               : {ftype}\n")
+        lf.write(f"Source folder              : {directory}{spindle}/{subfolder_src}/\n")
+        lf.write(f"Dest folder                : {masterfiledir}\n")
+        lf.write(f"Master source              : {masterfilein}\n")
+        lf.write(f"Master dest                : {masterfileout}\n")
+        lf.write(f"Last line cut              : {lastlinecut}\n")
+        lf.write(f"Applied zshift             : {zshift:+.6f}\n")
+
+    print(f"Log written: {logfile}")
