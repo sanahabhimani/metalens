@@ -68,7 +68,6 @@ def get_cam_test_touch(path, spindle, cuttype, noshiftflag, cutdepth, touchdepth
     xval = masterfile[linenumber, 1]
 
     camfile = np.loadtxt(campath, skiprows=4)
-    print('camfile', camfile)
     midpoint = len(camfile) // 2
     yval = camfile[midpoint, 1]
     zval = camfile[midpoint, 2]
