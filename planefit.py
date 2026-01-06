@@ -181,7 +181,7 @@ def planefit(filepath, do_plot=True):
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
 
-def fit_flange(path, flangemetfile):
+def fit_flange(path, flangemetfile, do_plot=False):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
     in two directions (around X and Y axes), and return the negative rotation angles.
@@ -252,27 +252,28 @@ def fit_flange(path, flangemetfile):
     print('Check that the angle values are of order 10^-4')
 
     # Plotting
-    fig = plt.figure(figsize=(15, 5))
+    if do_plot:
+        fig = plt.figure(figsize=(15, 5))
 
-    ax = fig.add_subplot(1, 3, 1, projection='3d')
-    ax.plot_trisurf(xin, yin, qin, cmap=cm.jet, linewidth=0.2)
-    ax.set_title('Data')
+        ax = fig.add_subplot(1, 3, 1, projection='3d')
+        ax.plot_trisurf(xin, yin, qin, cmap=cm.jet, linewidth=0.2)
+        ax.set_title('Data')
 
-    ax = fig.add_subplot(1, 3, 2, projection='3d')
-    ax.plot_trisurf(xin, yin, resids, cmap=cm.jet, linewidth=0.2)
-    ax.set_title('Residual Errors')
-    ax.set_xlabel('X (mm)')
-    ax.set_ylabel('Y (mm)')
-    ax.set_zlabel('Z residual (mm)')
+        ax = fig.add_subplot(1, 3, 2, projection='3d')
+        ax.plot_trisurf(xin, yin, resids, cmap=cm.jet, linewidth=0.2)
+        ax.set_title('Residual Errors')
+        ax.set_xlabel('X (mm)')
+        ax.set_ylabel('Y (mm)')
+        ax.set_zlabel('Z residual (mm)')
 
-    ax = fig.add_subplot(1, 3, 3, projection='3d')
-    ax.plot_trisurf(xin, yin, r, cmap=cm.jet, linewidth=0.2)
-    ax.set_title('Gauge Readout')
-    ax.set_xlabel('X (mm)')
-    ax.set_ylabel('Y (mm)')
+        ax = fig.add_subplot(1, 3, 3, projection='3d')
+        ax.plot_trisurf(xin, yin, r, cmap=cm.jet, linewidth=0.2)
+        ax.set_title('Gauge Readout')
+        ax.set_xlabel('X (mm)')
+        ax.set_ylabel('Y (mm)')
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()
 
     return -p[0], -p[1]
 
