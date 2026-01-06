@@ -124,7 +124,7 @@ def _check_lockfile(path):
         print("Lockfile not present, moving forward.")
 
 
-def _write_cam_set(
+def _write_cam_set_planar(
     cutpath,
     thickness_label,
     p, plane_func,
