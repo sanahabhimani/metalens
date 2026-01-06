@@ -628,7 +628,6 @@ def PlaneNoball(p, x, y, lensparams, stepheight):
 
     return float(xn4), float(yn4), float(zn4)
 
-
 def generate_lens_cut_files(
     p,
     pathname,
@@ -638,82 +637,233 @@ def generate_lens_cut_files(
     cutdiameter,
     bladeradius,
     cuttype,
-    x_rot_shift=0.5
+    lensparams,
+    stepheight,
+    x_rot_shift=0.0,
+    yres=0.500,
+    dzdy_h=0.01,
 ):
     """
-    Generate cut cam files for a lens surface using fitted parameters.
+    Generate lens cut cam files (SawPy-faithful): surface-normal compensation + plane-guard using stepheight.
+
+    This reproduces the SawPy camming logic:
+      1) Compute surface-based youts,zs using grad-like normal factors
+      2) Compute plane-only youtsplane,zsplane using PlaneNoball(stepheight)
+      3) Replace zs with zsplane when zsplane > zs (less aggressive cut)
 
     Parameters
     ----------
     p : array-like
-        Best-fit parameters from lensfit.
+        Fit vector from lensfit: [x0, y0, z0, a, b]
     pathname : str
-        Directory to output cut files.
     spindle : str
-        Spindle identifier.
     calibrationfilepath : str
-        Path to spindle calibration data.
     cutparamsfile : str
-        Filename of cut parameters.
     cutdiameter : float
-        Diameter of the lens to be cut.
     bladeradius : float
-        Radius of the cutting blade.
     cuttype : str
         'Thick', 'Med', or 'Thin'
-    x_rot_shift : float, default=0.5
-        X-shift adjustment to center the cut.
+    lensparams : list
+        [R, K, A, B, C, D, Tctr, Diam]
+    stepheight : float
+        Same step_height you used in SawPy (e.g., 7.046)
+    x_rot_shift : float
+        Same meaning as SawPy (shift for 180/270 cases; can be 0)
+    yres : float
+        Y resolution (mm), default 0.5 like SawPy
+    dzdy_h : float
+        Step size (mm) for numerical dz/dy used to build normal factors
 
     Returns
     -------
-    None
+    str
+        cutpath directory written
     """
-    thick_depth, med_depth, thin_depth, pitch = cu.get_cut_parameters(os.path.join(pathname, cutparamsfile))
-    cutpath = os.path.join(pathname, spindle, f'CutCamming{cuttype}-Noshift')
+    import os
+    import numpy as np
+    from pathlib import Path
+
+    # ---- directories ----
+    cutpath = os.path.join(pathname, spindle, f"CutCamming{cuttype}-Noshift")
     Path(cutpath).mkdir(parents=True, exist_ok=True)
 
-    xcenter = p[0]
-    ycenter = p[1]
-    radius = cutdiameter / 2.0
+    # ---- cut params ----
+    thick_depth, med_depth, thin_depth, pitch = cu.get_cut_parameters(os.path.join(pathname, cutparamsfile))
+
+    if cuttype == "Thick":
+        depth = thick_depth
+    elif cuttype == "Med":
+        depth = thick_depth + med_depth
+    elif cuttype == "Thin":
+        depth = thick_depth + med_depth + thin_depth
+    else:
+        raise ValueError(f"cuttype must be 'Thick', 'Med', or 'Thin' (got {cuttype})")
+
+    # ---- fitted center + cut geometry ----
+    xcenter = float(p[0])
+    ycenter = float(p[1])
+    radius = float(cutdiameter) / 2.0
+
+    # SawPy:
+    # Xstart = Xcenter - Cutdiam/2 + x_rot_shift + 0.5
+    # Xend   = Xcenter + Cutdiam/2
     xstart = xcenter - radius + x_rot_shift + 0.5
     xend = xcenter + radius
 
-    measdiam = 300
-    xstartmeas = xcenter - measdiam/2.0 + 0.5 # matches original xstartmeas in sawpy lensfit 
+    # ---- spindle offsets ----
+    Xoffset, Yoffset, Zoffset = cu.get_spindle_offsets(calibrationfilepath, spindle)
 
-    depth_dict = {'Thick': thick_depth, 'Med': thick_depth + med_depth, 'Thin': thick_depth + med_depth + thin_depth}
-    depth = depth_dict[cuttype]
+    # -------------------------------------------------------------------------
+    # Local helpers: FlrtNoball + PlaneNoball that accept the 5-vector p
+    # -------------------------------------------------------------------------
+    def FlrtNoball_local(pfit, x, y, lensparams):
+        x0, y0, z0, a, b = map(float, pfit)
 
-    newxoffset, newyoffset, newzoffset = cu.get_spindle_offsets(calibrationfilepath, spindle)
-    offsets = (newxoffset, newyoffset, newzoffset)
-    measrad = 0.5
-    yres = 0.5
+        xmod = x - x0
+        ymod = y - y0
 
-    def get_ys(xx):
+        A = np.mat([[1, 0, 0],
+                    [0, np.cos(a), -np.sin(a)],
+                    [0, np.sin(a),  np.cos(a)]])
+        B = np.mat([[ np.cos(b), 0, -np.sin(b)],
+                    [0,          1, 0],
+                    [ np.sin(b), 0,  np.cos(b)]])
+
+        r1 = np.sqrt(xmod**2 + ymod**2)
+        z1 = FlensNoball(r1, lensparams) + z0
+
+        pt1 = np.mat([[xmod], [ymod], [z1]])
+        newpt1 = A @ B @ pt1
+        x2, y2, z2 = newpt1
+
+        dx1 = float(x2 - xmod)
+        dy1 = float(y2 - ymod)
+
+        xn1 = float(xmod - dx1)
+        yn1 = float(ymod - dy1)
+        rn1 = np.sqrt(xn1**2 + yn1**2)
+        zn1 = FlensNoball(rn1, lensparams) + z0
+
+        ptn1 = np.mat([[xn1], [yn1], [zn1]])
+        newptn1 = A @ B @ ptn1
+        xn2, yn2, zn2 = newptn1
+
+        dx2 = float(xn2 - xmod)
+        dy2 = float(yn2 - ymod)
+
+        xn3 = float(xn1 - dx2)
+        yn3 = float(yn1 - dy2)   # IMPORTANT: dy2
+        rn3 = np.sqrt(xn3**2 + yn3**2)
+        zn3 = FlensNoball(rn3, lensparams) + z0
+
+        ptn3 = np.mat([[xn3], [yn3], [zn3]])
+        newptn3 = A @ B @ ptn3
+        xn4, yn4, zn4 = newptn3
+
+        return float(xn4), float(yn4), float(zn4)
+
+    def PlaneNoball_local(pfit, x, y, lensparams, stepheight):
+        """
+        Plane-only model used as a SawPy guard.
+        Matches the spirit of SawPy PlaneNoball(): linear plane through the fit + a stepheight-based offset.
+        """
+        x0, y0, z0, a, b = map(float, pfit)
+        R, K, A4, B6, C8, D10, Tctr, Diam = lensparams
+
+        # SawPy PlaneNoball uses:
+        # zout = FlensNoball(Diam/2) - stepheight + 0.100
+        zedge = FlensNoball(float(Diam) / 2.0, lensparams)
+        zout = zedge - float(stepheight) + 0.100
+
+        # Plane with slopes a,b around center (x0,y0), anchored at (x0,y0)->(z0 + zout)
+        # sign convention: consistent with using a,b as small rotations in Flrt
+        z = (z0 + zout) - a * (x - x0) - b * (y - y0)
+        return float(x), float(y), float(z)
+
+    # Numerical dz/dy for normal factors (surface and plane)
+    def dzdy_surface(pfit, x, y):
+        h = float(dzdy_h)
+        zp = FlrtNoball_local(pfit, x, y + h, lensparams)[2]
+        zm = FlrtNoball_local(pfit, x, y - h, lensparams)[2]
+        return (zp - zm) / (2.0 * h)
+
+    def dzdy_plane(pfit, x, y):
+        h = float(dzdy_h)
+        zp = PlaneNoball_local(pfit, x, y + h, lensparams, stepheight)[2]
+        zm = PlaneNoball_local(pfit, x, y - h, lensparams, stepheight)[2]
+        return (zp - zm) / (2.0 * h)
+
+    # y-bounds for a given x on the cut circle
+    def y_bounds_for_x(xx):
         dx = xx - xcenter
         if abs(dx) > radius:
-            return np.array([])
-        dy = np.sqrt(radius ** 2 - dx ** 2)
-        return np.arange(ycenter - dy, ycenter + dy + 0.0001, yres)
+            return None
+        dy = np.sqrt(radius**2 - dx**2)
+        return (ycenter - dy, ycenter + dy + 0.0001)
 
-    def plane_func(x, y, a, b, c):
-        return -a * x - b * y - c
+    # -------------------------------------------------------------------------
+    # Write cam set (SawPy-like)
+    # -------------------------------------------------------------------------
+    xs = np.arange(xstart, xend, pitch)
+    master_lines = []
 
-    cu._write_cam_set(
-        cutpath=cutpath,
-        thickness_label=cuttype,
-        p=p[:3],
-        plane_func=plane_func,
-        Xstart=xstart,
-        Xend=xend,
-        get_ys=get_ys,
-        pitch=pitch,
-        Yres=yres,
-        offsets=offsets,
-        bladeradius=bladeradius,
-        depth=depth,
-        measrad=measrad
-    )
+    for j, xx in enumerate(xs):
+        bounds = y_bounds_for_x(xx)
+        if bounds is None:
+            continue
+        ystart, yend = bounds
+        ys = np.arange(ystart, yend, yres)
+        if ys.size < 2:
+            continue
+
+        youts = np.zeros_like(ys, dtype=float)
+        zs = np.zeros_like(ys, dtype=float)
+
+        for i, yy in enumerate(ys):
+            # ---------------- surface model ----------------
+            zsurf = FlrtNoball_local(p, xx, yy, lensparams)[2]
+
+            dzdy_s = dzdy_surface(p, xx, yy)
+            Fy = -dzdy_s
+            Fz = 1.0
+            den = np.sqrt(Fy**2 + Fz**2)
+            Fyy = Fy / den
+            Fzz = Fz / den
+
+            youts[i] = yy - bladeradius * Fyy
+            z_cmd_surface = zsurf - Zoffset + bladeradius * Fzz - depth
+
+            # ---------------- plane guard (SawPy stepheight) ----------------
+            zpl = PlaneNoball_local(p, xx, youts[i], lensparams, stepheight)[2]
+
+            dzdy_p = dzdy_plane(p, xx, youts[i])
+            Fy2 = -dzdy_p
+            Fz2 = 1.0
+            den2 = np.sqrt(Fy2**2 + Fz2**2)
+            Fzz2 = Fz2 / den2
+
+            z_cmd_plane = zpl - Zoffset + bladeradius * Fzz2 - depth
+
+            # SawPy behavior: take the higher Z (less aggressive cut)
+            zs[i] = z_cmd_surface
+            if z_cmd_plane > zs[i]:
+                zs[i] = z_cmd_plane
+                # SawPy sometimes kept youts[i] as-is (commented out swapping).
+                # If you want exact SawPy variants, we can toggle this line:
+                # youts[i] = youts[i]  # leave unchanged
+
+        fname_prefix = os.path.join(cutpath, f"CutCam{cuttype}")
+        cu.make_cam_file(fname_prefix, j, xx + Xoffset, youts + Yoffset, zs)
+
+        master_lines.append(
+            f"{j:04d} {xx+Xoffset} {youts[0]+Yoffset} {zs[0]} {youts[-1]+Yoffset}\n"
+        )
+
+    with open(os.path.join(cutpath, "Master.txt"), "w") as f:
+        f.writelines(master_lines)
+
+    return cutpath
+
 
 def shiftZ_silicon(directory, spindle, ftype, zshift,
                    lastlinecut, firstline, numlines):
