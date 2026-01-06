@@ -529,6 +529,8 @@ def dF(rin, lensparams):
     Fr = FlensNoball(rin + h, lensparams)
     dz = -(Fr - Fl) / (2.0 * h)
 
+    return dz
+
 
 ###################################### Plane Helper Functions ##########################################
 # TODO: Implement all use cases of stepheight/plane helper functions here for correct cut cam file generation
