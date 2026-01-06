@@ -180,111 +180,101 @@ def planefit(filepath, do_plot=True):
 
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
-def planefit_flange(filepath, do_plot=False,):
+
+def fit_flange(path, flangemetfile):
     """
-    SawPy-equivalent flange fit.
+    Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
+    in two directions (around X and Y axes), and return the negative rotation angles.
 
-    Fits parameters p = [a, b, x0, y0, z0] where:
-      - a is the rotation about X (RotX)
-      - b is the rotation about Y (RotY)
-      - x0, y0, z0 are translations
-
-    Input file columns are [x, y, z, r] and q = z + r.
+    Parameters
+    ----------
+    path : str
+        Path to the directory containing the flange metrology file.
+    flangemetfile : str
+        Filename of the flange metrology .csv/.dat/.txt file.
 
     Returns
     -------
-    afixed : float
-        -a (matches SawPy return convention)
-    bfixed : float
-        -b (matches SawPy return convention)
-    p : np.ndarray
-        Full fitted parameter vector [a, b, x0, y0, z0]
-    resids : np.ndarray
-        Least-squares residual vector infodict['fvec']
+    tuple of float
+        Negative rotation angles (a, b) in radians about the X and Y axes respectively.
+
+    Notes
+    -----
+    - The metrology file must be a file with four columns: X, Y, Z, and gauge offset (r).
+    - The fit minimizes Z + r using a rotated coordinate system.
+    - Assumes small angles for a and b (on the order of 10^-4).
+    - The model previously used a function F(x, y) that returned a constant 0.5 
+      as a flat surface offset. This has been inlined directly into the return statement.
     """
-    # Load data
-    pts = np.loadtxt(filepath, delimiter=',')
-    x = pts[:, 0]
-    y = pts[:, 1]
-    z = pts[:, 2]
-    r = pts[:, 3]
-    q = z + r
+    flangemetpath = path + flangemetfile
+    pts = np.loadtxt(flangemetpath, delimiter=',')
 
-    F_const= 0.5
+    xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
+    qin = zin + r
 
-    # Initial guess [a, b, x0, y0, z0]
-    p0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=float)
+    # Initial guess for parameters: [a, b, x0, y0, z0]
+    p0 = [0, 0, 0, 0, 0]
 
-    def residuals(p, x, y, q):
+    def planefit(p, x, y, q):
+        """Model function returning rotated Z values for least squares fitting."""
         a, b, x0, y0, z0 = p
+        A = np.array([[1, 0, 0],
+                      [0, np.cos(a), -np.sin(a)],
+                      [0, np.sin(a),  np.cos(a)]])
+        B = np.array([[ np.cos(b), 0, -np.sin(b)],
+                      [0,          1, 0],
+                      [np.sin(b),  0, np.cos(b)]])
 
-        # Rotation matrices (same as SawPy)
-        ca, sa = np.cos(a), np.sin(a)
-        cb, sb = np.cos(b), np.sin(b)
+        xm, ym, qm = x - x0, y - y0, q - z0
+        pts = np.vstack((xm, ym, qm))  # shape (3, N)
+        rotated_pts = A @ B @ pts
+        zp = rotated_pts[2, :]
 
-        A = np.array([[1.0, 0.0, 0.0],
-                      [0.0,  ca, -sa],
-                      [0.0,  sa,  ca]], dtype=float)
+        # Originally: outs[i] = zp + F(xp, yp) with F(x, y) = 0.5
+        # Inlined as a constant surface offset:
+        return zp + 0.5
 
-        B = np.array([[ cb, 0.0, -sb],
-                      [0.0, 1.0, 0.0],
-                      [ sb, 0.0,  cb]], dtype=float)
-
-        # Translate then rotate
-        xm = x - x0
-        ym = y - y0
-        qm = q - z0
-        P = np.vstack([xm, ym, qm])        # shape (3, N)
-        Pp = (A @ B) @ P                   # shape (3, N)
-
-        zp = Pp[2, :]                      # rotated z'
-
-        # SawPy objective: outs[i] = zp + F(xp, yp), and F is constant 0.5
-        return zp + F_const
-
-    ftol=1e-14
-    xtol=1e-14
+    # Fit the model
     p, cov, infodict, mesg, ier = opt.leastsq(
-        residuals, p0, args=(x, y, q),
-        full_output=1, ftol=ftol, xtol=xtol,
-        diag=(100.0, 100.0, 1.0, 1.0, 1.0),
+        planefit,
+        p0,
+        args=(xin, yin, qin),
+        full_output=1,
+        ftol=1e-14,
+        xtol=1e-14,
+        diag=(100, 100, 1, 1, 1)
     )
 
-    resids = infodict["fvec"]
+    resids = infodict['fvec']
 
-    # Match SawPy printout + convention
-    afixed = -p[0]
-    bfixed = -p[1]
-    print("Fitting...")
-    print("Angles:", "a= ", afixed, "b= ", bfixed)
-    print("Check that that angle values are of order 10^-4")
+    print('Fitting...')
+    print(f'Angles: a = {-p[0]:.6e}, b = {-p[1]:.6e}')
+    print('Check that the angle values are of order 10^-4')
 
-    if do_plot:
-        fig = plt.figure(figsize=(12, 4), dpi=150)
+    # Plotting
+    fig = plt.figure(figsize=(15, 5))
 
-        ax1 = fig.add_subplot(1, 3, 1, projection="3d")
-        ax1.plot_trisurf(x, y, q, cmap=cm.jet, linewidth=0.2)
-        ax1.set_title("Data")
-        ax1.set_xlabel("X (mm)")
-        ax1.set_ylabel("Y (mm)")
+    ax = fig.add_subplot(1, 3, 1, projection='3d')
+    ax.plot_trisurf(xin, yin, qin, cmap=cm.jet, linewidth=0.2)
+    ax.set_title('Data')
 
-        ax2 = fig.add_subplot(1, 3, 2, projection="3d")
-        ax2.plot_trisurf(x, y, resids, cmap=cm.jet, linewidth=0.2)
-        ax2.set_title("Residual Errors")
-        ax2.set_xlabel("X (mm)")
-        ax2.set_ylabel("Y (mm)")
-        ax2.set_zlabel("Z residual error (mm)")
+    ax = fig.add_subplot(1, 3, 2, projection='3d')
+    ax.plot_trisurf(xin, yin, resids, cmap=cm.jet, linewidth=0.2)
+    ax.set_title('Residual Errors')
+    ax.set_xlabel('X (mm)')
+    ax.set_ylabel('Y (mm)')
+    ax.set_zlabel('Z residual (mm)')
 
-        ax3 = fig.add_subplot(1, 3, 3, projection="3d")
-        ax3.plot_trisurf(x, y, r, cmap=cm.jet, linewidth=0.2)
-        ax3.set_title("Gauge Readout")
-        ax3.set_xlabel("X (mm)")
-        ax3.set_ylabel("Y (mm)")
+    ax = fig.add_subplot(1, 3, 3, projection='3d')
+    ax.plot_trisurf(xin, yin, r, cmap=cm.jet, linewidth=0.2)
+    ax.set_title('Gauge Readout')
+    ax.set_xlabel('X (mm)')
+    ax.set_ylabel('Y (mm)')
 
-        plt.tight_layout()
-        plt.show()
+    plt.tight_layout()
+    plt.show()
 
-    return afixed, bfixed
+    return -p[0], -p[1]
 
 
 def generate_planar_files(
