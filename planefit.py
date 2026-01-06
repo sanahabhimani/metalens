@@ -180,6 +180,112 @@ def planefit(filepath, do_plot=True):
 
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
+def planefit_flange(filepath, do_plot=False,):
+    """
+    SawPy-equivalent flange fit.
+
+    Fits parameters p = [a, b, x0, y0, z0] where:
+      - a is the rotation about X (RotX)
+      - b is the rotation about Y (RotY)
+      - x0, y0, z0 are translations
+
+    Input file columns are [x, y, z, r] and q = z + r.
+
+    Returns
+    -------
+    afixed : float
+        -a (matches SawPy return convention)
+    bfixed : float
+        -b (matches SawPy return convention)
+    p : np.ndarray
+        Full fitted parameter vector [a, b, x0, y0, z0]
+    resids : np.ndarray
+        Least-squares residual vector infodict['fvec']
+    """
+    # Load data
+    pts = np.loadtxt(filepath, delimiter=',')
+    x = pts[:, 0]
+    y = pts[:, 1]
+    z = pts[:, 2]
+    r = pts[:, 3]
+    q = z + r
+
+    F_const= 0.5
+
+    # Initial guess [a, b, x0, y0, z0]
+    p0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=float)
+
+    def residuals(p, x, y, q):
+        a, b, x0, y0, z0 = p
+
+        # Rotation matrices (same as SawPy)
+        ca, sa = np.cos(a), np.sin(a)
+        cb, sb = np.cos(b), np.sin(b)
+
+        A = np.array([[1.0, 0.0, 0.0],
+                      [0.0,  ca, -sa],
+                      [0.0,  sa,  ca]], dtype=float)
+
+        B = np.array([[ cb, 0.0, -sb],
+                      [0.0, 1.0, 0.0],
+                      [ sb, 0.0,  cb]], dtype=float)
+
+        # Translate then rotate
+        xm = x - x0
+        ym = y - y0
+        qm = q - z0
+        P = np.vstack([xm, ym, qm])        # shape (3, N)
+        Pp = (A @ B) @ P                   # shape (3, N)
+
+        zp = Pp[2, :]                      # rotated z'
+
+        # SawPy objective: outs[i] = zp + F(xp, yp), and F is constant 0.5
+        return zp + F_const
+
+    ftol=1e-14
+    xtol=1e-14
+    p, cov, infodict, mesg, ier = opt.leastsq(
+        residuals, p0, args=(x, y, q),
+        full_output=1, ftol=ftol, xtol=xtol,
+        diag=(100.0, 100.0, 1.0, 1.0, 1.0),
+    )
+
+    resids = infodict["fvec"]
+
+    # Match SawPy printout + convention
+    afixed = -p[0]
+    bfixed = -p[1]
+    print("Fitting...")
+    print("Angles:", "a= ", afixed, "b= ", bfixed)
+    print("Check that that angle values are of order 10^-4")
+
+    if do_plot:
+        fig = plt.figure(figsize=(12, 4), dpi=150)
+
+        ax1 = fig.add_subplot(1, 3, 1, projection="3d")
+        ax1.plot_trisurf(x, y, q, cmap=cm.jet, linewidth=0.2)
+        ax1.set_title("Data")
+        ax1.set_xlabel("X (mm)")
+        ax1.set_ylabel("Y (mm)")
+
+        ax2 = fig.add_subplot(1, 3, 2, projection="3d")
+        ax2.plot_trisurf(x, y, resids, cmap=cm.jet, linewidth=0.2)
+        ax2.set_title("Residual Errors")
+        ax2.set_xlabel("X (mm)")
+        ax2.set_ylabel("Y (mm)")
+        ax2.set_zlabel("Z residual error (mm)")
+
+        ax3 = fig.add_subplot(1, 3, 3, projection="3d")
+        ax3.plot_trisurf(x, y, r, cmap=cm.jet, linewidth=0.2)
+        ax3.set_title("Gauge Readout")
+        ax3.set_xlabel("X (mm)")
+        ax3.set_ylabel("Y (mm)")
+
+        plt.tight_layout()
+        plt.show()
+
+    return afixed, bfixed
+
 
 def generate_planar_files(
     xin,
