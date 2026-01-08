@@ -1,0 +1,31 @@
+lensparams:
+  R:
+    -818.9215895
+  k:
+    -30.00046667
+  a1:
+    -1.56460553e-4
+  a2:
+    -3.06349779e-9
+  a3:
+    5.00246955e-14
+  a4:
+    0.0
+  t_ctr:
+    53.507
+  diam:
+    448.0
+
+alignment:
+  afixed:
+    0.0
+  bfixed:
+    0.0
+  xrotshift:
+    0.0
+
+cut:
+  step_height:
+    7.046
+  cut_diam:
+    459 # could also add parameters that would calculate the cut diamater so we could have extralines param and pitch params for example

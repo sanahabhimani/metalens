@@ -1,0 +1,10 @@
+paths:
+  cal_file_path: "path to spindle calibration file"
+  cutparams_filepath: "path to silicon lf cut params file for example"
+  output_dir: "path to directory for where cut camming files will live" 
+
+spindles:
+  SpindleB:
+    type: "Thick"
+    blade_diameter: 78.2
+    ## other params?
