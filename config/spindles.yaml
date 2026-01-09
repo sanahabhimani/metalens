@@ -1,10 +1,13 @@
 paths:
   cal_file_path: "path to spindle calibration file"
-  cutparams_filepath: "path to silicon lf cut params file for example"
+  cutparams_filepath: "path to silicon LF cut params file for example"
   output_dir: "path to directory for where cut camming files will live" 
+  # add metrology path file
+  # also, consider inputtng the cut params in this config file rather than pointing to the cut params file path
 
 spindles:
   SpindleB:
     type: "Thick"
     blade_diameter: 78.2
     ## other params?
+    ## maybe worth adding flood port information too which won't be used for metalens but would be used for automation1? that way, no new config file just for automation1 python code. all just accessible here?
