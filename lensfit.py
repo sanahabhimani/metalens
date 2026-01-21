@@ -254,10 +254,10 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
     r1 = np.sqrt(xmod**2 + ymod**2)
     z1 = Flens(r1, lensparams) + z0
 
-    A = np.mat([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
-    B = np.mat([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
+    A = np.asmatrix([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    B = np.asmatrix([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
 
-    pt = np.mat([[xmod], [ymod], [z1]])
+    pt = np.asmatrix([[xmod], [ymod], [z1]])
     newpt = A @ B @ pt
     x2, y2, z2 = newpt
 
@@ -268,7 +268,7 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
     rn1 = np.sqrt(xn1**2 + yn1**2)
     zn1 = Flens(rn1, lensparams) + z0
 
-    ptn1 = np.mat([[xn1], [yn1], [zn1]])
+    ptn1 = np.asmatrix([[xn1], [yn1], [zn1]])
     newptn1 = A @ B @ ptn1
     xn2, yn2, zn2 = newptn1
 
@@ -279,7 +279,7 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
     rn3 = np.sqrt(xn3**2 + yn3**2)
     zn3 = Flens(rn3, lensparams) + z0
 
-    ptn3 = np.mat([[xn3], [yn3], [zn3]])
+    ptn3 = np.asmatrix([[xn3], [yn3], [zn3]])
     newptn3 = A @ B @ ptn3
 
     xn4, yn4, zn4 = newptn3
@@ -374,10 +374,10 @@ def Fnew(p, x, y, q, afixed, bfixed, lensparams):
     a = -p[3]
     b = -p[4]
 
-    A = np.mat([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
-    B = np.mat([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
+    A = np.asmatrix([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    B = np.asmatrix([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
 
-    pt = np.mat([[x - x0], [y - y0], [q]])  # Rotate then translate
+    pt = np.asmatrix([[x - x0], [y - y0], [q]])  # Rotate then translate
     newpt = A * B * pt
     xr = float(newpt[0])
     yr = float(newpt[1])
@@ -722,17 +722,17 @@ def generate_lens_cut_files(
         xmod = x - x0
         ymod = y - y0
 
-        A = np.mat([[1, 0, 0],
+        A = np.asmatrix([[1, 0, 0],
                     [0, np.cos(a), -np.sin(a)],
                     [0, np.sin(a),  np.cos(a)]])
-        B = np.mat([[ np.cos(b), 0, -np.sin(b)],
+        B = np.asmatrix([[ np.cos(b), 0, -np.sin(b)],
                     [0,          1, 0],
                     [ np.sin(b), 0,  np.cos(b)]])
 
         r1 = np.sqrt(xmod**2 + ymod**2)
         z1 = FlensNoball(r1, lensparams) + z0
 
-        pt1 = np.mat([[xmod], [ymod], [z1]])
+        pt1 = np.asmatrix([[xmod], [ymod], [z1]])
         newpt1 = A @ B @ pt1
         x2, y2, z2 = newpt1
 
@@ -744,7 +744,7 @@ def generate_lens_cut_files(
         rn1 = np.sqrt(xn1**2 + yn1**2)
         zn1 = FlensNoball(rn1, lensparams) + z0
 
-        ptn1 = np.mat([[xn1], [yn1], [zn1]])
+        ptn1 = np.asmatrix([[xn1], [yn1], [zn1]])
         newptn1 = A @ B @ ptn1
         xn2, yn2, zn2 = newptn1
 
@@ -756,7 +756,7 @@ def generate_lens_cut_files(
         rn3 = np.sqrt(xn3**2 + yn3**2)
         zn3 = FlensNoball(rn3, lensparams) + z0
 
-        ptn3 = np.mat([[xn3], [yn3], [zn3]])
+        ptn3 = np.asmatrix([[xn3], [yn3], [zn3]])
         newptn3 = A @ B @ ptn3
         xn4, yn4, zn4 = newptn3
 
