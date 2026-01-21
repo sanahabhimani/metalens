@@ -230,4 +230,4 @@ def generate_hkcut_files(
         'measrad':measrad
     }
 
-    cu._write_cam_set(**cam_args)
+    cu._write_cam_set_planar(**cam_args)
