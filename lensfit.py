@@ -805,9 +805,9 @@ def generate_lens_cut_files(
     if ct == "thick":
         depth = thick_depth
     elif ct == "med":
-        depth = med_depth
+        depth = thick_depth + med_depth
     elif ct == "thin":
-        depth = thin_depth
+        depth = thick_depth + med_depth + thin_depth
     else:
         raise ValueError(f"Unknown cuttype={cuttype}. Expected Thick/Med/Thin.")
 
