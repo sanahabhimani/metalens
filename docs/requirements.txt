@@ -5,3 +5,4 @@ sphinx-autodoc-typehints
 numpy
 matplotlib
 pyserial
+scipy
