@@ -1,7 +1,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('/Users/sanuma/git/metaLens/'))
+# Add the repo root to sys.path so autodoc can import modules like core_utils.py
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
 # Configuration file for the Sphinx documentation builder.
