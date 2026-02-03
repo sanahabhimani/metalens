@@ -1,4 +1,4 @@
-Core Utils Module
+Core Utils
 =================
 
 .. automodule:: core_utils

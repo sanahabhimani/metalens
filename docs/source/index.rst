@@ -17,3 +17,7 @@ documentation for details.
 
    core_utils
    test_touch_utils
+   housekeeping
+   planefit
+   alumina
+   lensfit
