@@ -3,3 +3,5 @@ sphinx-rtd-theme
 myst-parser
 sphinx-autodoc-typehints
 numpy
+matplotlib
+pyserial
