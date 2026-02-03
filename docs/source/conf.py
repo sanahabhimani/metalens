@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('/Users/sanuma/git/MetaLens/MetaLens'))
+sys.path.insert(0, os.path.abspath('/Users/sanuma/git/metaLens/'))
 
 
 # Configuration file for the Sphinx documentation builder.

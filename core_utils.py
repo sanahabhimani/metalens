@@ -54,15 +54,12 @@ def get_cut_parameters(cutparamsfile):
     Returns
     -------
     tuple of float
-        A tuple containing:
-        - thick_depth
-        - med_depth
-        - thin_depth
-        - cutpitch
+        tuple containing: thick_depth, med_depth, thin_depth, cutpitch
     """
     values = np.loadtxt(cutparamsfile, dtype=str, skiprows=1)
     thick_depth, med_depth, thin_depth, cutpitch = map(float, values[:4])
     return thick_depth, med_depth, thin_depth, cutpitch
+
 
 def make_cam_file(filename, filenum, xval, ys, zs):
     """
