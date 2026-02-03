@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'MetaLens'
-copyright = '2025, Sanah A. Bhimani'
-author = 'Sanah A. Bhimani'
+copyright = '2025, Sanah Bhimani/McMahon Cosmology Group'
+author = 'Sanah Bhimani'
 release = '0.1'
 
 # -- General configuration ---------------------------------------------------
@@ -48,7 +48,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 html_context = {
-    "display_github": True,
+    "display_github": False,
     "github_user": "sanahabhimani",
     "github_repo": "metalens",
     "github_version": "main",
