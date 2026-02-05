@@ -817,7 +817,23 @@ def generate_lens_cut_files(
     radius = float(cutdiameter) / 2.0
 
     # SawPy exact X-range
-    xstart = xcenter - radius + float(x_rot_shift) + 0.5
+    xstart = xcenter - radius + 0.5
+    print('xstart before xrotshift applied', xstart)
+    x_rot_shift = float(x_rot_shift)
+    # if x rot shift absolute value is greater than 0.499, then using the +0.5 logic 
+    # doesn't allow xrotshift + 0.5 to be a positive number anymore which pushes xstart 
+    # outside the disk. usually, xrotshift + 0.5 doesn't cause this problem except in 
+    # the instance of LF where the pitch is so large (1.375mm) that we find we need
+    # to apply a correction greater in absolute value than 0.499. for future proofing,
+    # adding a logic system below
+    if (x_rot_shift + 0.5) >= 0:
+        margin = 0.5
+    else:
+        # choosing a margin knowing that we wouldn't make a correction in x bigger than half the pitch
+        margin = 0.5*pitch
+    
+    xstart = xcenter - radius + x_rot_shift + margin
+    print('xstart after xrotshift applied', xstart)
     xend   = xcenter + radius
     xs = np.arange(xstart, xend, pitch)
 
