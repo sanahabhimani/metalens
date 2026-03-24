@@ -1,0 +1,30 @@
+SpindleB:
+  x_center_shift: 'val'
+  x_postcal_shift: 'val'
+  y_postcal_shift: 'val'
+  zcorr:
+    0deg: 'val'
+    90deg: 'val'
+    180deg: 'val'
+    270deg: 'val'
+
+SpindleC:
+  x_center_shift: 'val'
+  x_postcal_shift: 'val'
+  y_postcal_shift: 'val'
+  zcorr:
+    0deg: 'val'
+    90deg: 'val'
+    180deg: 'val'
+    270deg: 'val'
+
+SpindleD:
+  x_center_shift: 'val'
+  x_postcal_shift: 'val'
+  y_postcal_shift: 'val'
+  zcorr:
+    0deg: 'val'
+    90deg: 'val'
+    180deg: 'val'
+    270deg: 'val'
+  
