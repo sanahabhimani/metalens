@@ -1,0 +1,78 @@
+Functions that need to now take in config files
+
+CoreUtils Modules
+1. shiftXZ_nocomp takes in ftype, xshift, zshift, directory
+	  - spindles.yaml will give us ftype and directory (basedir per orientation)
+		- lens_testtouches.yaml will give us xshift, zshift per orientation. xshift here would then add x_center_shift + x_postcal_shift
+
+Housekeeping Modules
+1. quickfit_plane can now take filepath of metrology data from spindles.yaml
+2. generate_hkcut_files takes in currently without config file:
+   - spindle (str)
+	 - pathname (spindles.yaml)
+	 - calibration file path (spindles.yaml)
+	 - cutparamsfile (spindle.yaml)
+	 - bladeradius (spindle.yaml) --> doesnt really get used in the code so can just call what you need
+	 - cuttype (spindle.yaml)
+	 keep:
+	   - p, xstart, xend, ystart, yend, use_no_shift_suffix
+
+We can make it just take it in spindle names that we feed it and the path of the config file for spindles and lens_testtouches.yaml and then it can call all the features it needs from spindles.yaml and lens_testtouches.yaml:
+     - spindle as a string
+		 - when given spindle as a string, it should define:
+		     - pathname from the config file to define cutpaththick, cutpaththin, cutpathmed (spindles.yaml)
+				 - cutparamsfile from spindles.yaml
+				 - calibrationfilepath from spindles.yaml
+				 - bladeradius never gets used in practice just as a print statement so we can just make it call that directly from the config file
+
+Lensfit Modules
+1. lensfit takes in:
+   - pathname (from spindles.yaml)
+	 - metrology filename (spindles.yaml)
+	 - afixed, bfixed will be provided via flange metrology values provided
+	 - i don't think this one will be too bad because we're just giving it the config file as the argument to do the fitting for sure for sure 
+
+2. Flens takes in:
+- lensparams (lensparams.yaml)
+   - make sure to make lensparams=None, and then add configfile to lensparams argument
+- if this only gets used in lensfit, then it doesn't need the config file argument 
+3. Flrt takes in lensparams (lensparams.yaml)
+		- does this get used inside lensfit? cus then in that case, we don't need to apply config file 
+4. F takes in lensparams (lensparams.yaml)
+		- this only gets used inside lensfit? cus then we dont need to update with configfile
+5. Fnew (lensparams, but might not need config file arg)
+6. FuncNew (lensparams, but might not need config file arg)
+7. FlensNoball (lensparams, but might not need config file arg)
+8. dF (lensparams, but might not need config file arg)
+9. gradFplane (lensparams and stepheight)
+    - is used in generate lens_cut_files which needs lensparams and stepheight
+10. FlrtNoball (lensparams, but might not need config file arg)
+11. gradF (lensparams, but might not need config file arg)
+12. PlaneNoball (lensparams, stepheight but might not need config file arg)
+13. generate_lens_cut_files takes in:
+    - pathname (spindles.yaml)
+		- spindle --> should keep as str cus we'll use the spindle to grab the info we need from spindles.yaml to grab the pathname
+		- calibrationfilepath (spindles.yaml)
+		- cutparamsfiles (spindles.yaml)
+		- cutdiamater (lensparams.yaml)
+		- bladeradius (spindles.yaml)
+		- cuttype (spindles.yaml)
+		- lensparams (lensparams.yaml)
+		- step_height (lensparams.yaml)
+		- x_rot_shift (lensparams.yaml)
+14. shiftZ_silicon takes in:
+		- basedir containing spindle subfolders (spindles.yaml?)
+		- spindle (str, keep)
+		- ftype (spindles.yaml)
+		- zshift --> keep this because we're treating this like alumina so saving that to a config file and pulling from there is not what should happen
+
+Planefit Modules
+
+Test Touch Utils Modules
+
+Alumina Modules
+
+To do
+1. change the name from spiindles.yaml to something more comprehensive sounding since it includes filepaths too
+2. do not forget to incorporate that xshifts that happen must incorporate x_center_shift+x_postcal_shift
+3. where are the Y shifts we need to incorporate that Cameron and Rahul do? 
