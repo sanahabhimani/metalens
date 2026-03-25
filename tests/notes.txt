@@ -1,0 +1,14 @@
+A four layer testing approach
+
+1. Config lookup tests. Given spindle + orientation, the testing function makes sure we return the right parameters like: type, x_center_shift, xpostcal_shift, ypostcalshift, zcorr, metrology path, calibration path, cutparamspath, baseoutput directory
+
+2. Path construction tests. Confirm tat the config resolver builds the correct paths for:
+- metrology file, spindle output directory, CutCamming{Type}-Noshift, CutCamming{Type}, Master.txt, CutCam{Type}. 
+
+3. Legacy vs config equivalence tests. For each function we refactor, compare old call style with manual args against new call style with config driven args and verify the outputs match. Maybe best to, for now, create a copy function of the old functions until we're sure we can integrate after we've found any breaking behavior?
+
+4. Temp-directory e2e tests. Use tmp_path in pytest so the tests write to a sandbox and never touch real lab data. It will createa  tiny fake calibration file, tiny fake cutparams file, tiny fake metrology file, tiny fake config files, run the function and have some asserts. Assert that
+    - expected directories exist
+		- expected files exist
+		- Master.txt content is right
+		- a couple .Cam files have expected headers/shifted values
