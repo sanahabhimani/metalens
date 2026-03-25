@@ -305,5 +305,5 @@ def generate_hkcut_files_config(
         xend=xend,
         ystart=ystart,
         yend=yend,
-        use_no_shift_suffix=use_no_shift_suffix,
+        use_noshift_suffix=use_noshift_suffix,
     )
