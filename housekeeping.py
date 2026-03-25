@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy import optimize as opt
 import core_utils as cu
+import config_helper as ch
 
 
 def quickfit_plane(filepath, do_plot=True):
@@ -231,3 +232,78 @@ def generate_hkcut_files(
     }
 
     cu._write_cam_set_planar(**cam_args)
+
+
+
+def generate_hkcut_files_config(
+    p,
+    spindle,
+    orientation,
+    dicing_metadata_path,
+    testtouch_config_path,
+    xstart,
+    xend,
+    ystart,
+    yend,
+    use_noshift_suffix=True
+):
+    """
+    Generate cut-camming files for a planar surface, supporting both circular and rectangular geometries.
+
+    Parameters
+    ----------
+    p : array-like of float
+        Plane coefficients [a, b, c] from the plane fitting function.
+
+    spindle : str
+        Spindle identifier (used in file path construction).
+
+    xstart : float
+        Starting X position for the cut region.
+
+    xend : float
+        Ending X position for the cut region.
+
+    ystart : float, optional
+        Starting Y position for rectangular cuts.
+
+    yend : float, optional
+        Ending Y position for rectangular cuts.
+
+    use_noshift_suffix : bool, default=True
+        If True, appends '-Noshift' to cut directory names (applies to all current use cases). Default is True.
+
+
+    Returns
+    -------
+    None or str
+        Returns 'Lockfile present' if a lock file exists and cut generation is skipped. Otherwise, writes cam files.
+    """
+
+    context = ch.get_cut_context(
+        spindle=spindle,
+        orientation=orientation,
+        spindles_config_path=dicing_metadata_path,
+        testtouch_config_path=testtouch_config_path
+    )
+    if not str(context["base_dir"]).endswith("/"):
+        pathname = str(context["base_dir"]) + "/"
+    else:
+        pathname = str(context["base_dir"])
+
+    bladeradius = context['blade_diameter']/2
+
+    return generate_hkcut_files(
+        p=p,
+        pathname=pathname,
+        spindle=spindle,
+        calibrationfilepath=context["cal_file_path"],
+        cutparamsfile=context["cutparams_filepath"],
+        bladeradius=bladeradius,
+        cuttype=context["type"],
+        xstart=xstart,
+        xend=xend,
+        ystart=ystart,
+        yend=yend,
+        use_no_shift_suffix=use_no_shift_suffix,
+    )
