@@ -1,30 +1,30 @@
 SpindleB:
-  x_center_shift: 'val'
-  x_postcal_shift: 'val'
-  y_postcal_shift: 'val'
+  x_center_shift: '0'
+  x_postcal_shift: '+0.010'
+  y_postcal_shift: '0'
   zcorr:
-    0deg: 'val'
-    90deg: 'val'
-    180deg: 'val'
-    270deg: 'val'
+    0deg: '-0.02834'
+    90deg: '0'
+    180deg: '0'
+    270deg: '0'
 
 SpindleC:
-  x_center_shift: 'val'
-  x_postcal_shift: 'val'
-  y_postcal_shift: 'val'
+  x_center_shift: '0'
+  x_postcal_shift: '0'
+  y_postcal_shift: '0'
   zcorr:
-    0deg: 'val'
-    90deg: 'val'
-    180deg: 'val'
-    270deg: 'val'
+    0deg: '+0.28504'
+    90deg: '0'
+    180deg: '0'
+    270deg: '0'
 
 SpindleD:
-  x_center_shift: 'val'
-  x_postcal_shift: 'val'
-  y_postcal_shift: 'val'
+  x_center_shift: '0'
+  x_postcal_shift: '+0.010'
+  y_postcal_shift: '0'
   zcorr:
-    0deg: 'val'
-    90deg: 'val'
-    180deg: 'val'
-    270deg: 'val'
+    0deg: '+0.06834'
+    90deg: '0'
+    180deg: '0'
+    270deg: '0'
   

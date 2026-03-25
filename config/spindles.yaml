@@ -1,31 +1,31 @@
 paths:
-  cal_file_path: "path to spindle calibration file"
-  cutparams_filepath: "path to silicon LF cut params file for example"
+  cal_file_path: "/Users/sanuma/LF_lens2_reproduce2/SpindleCal.txt"
+  cutparams_filepath: "/Users/sanuma/LF_lens2_reproduce2/Silicon_LF_Cut_params.txt"
 
 spindles:
   SpindleB:
     type: "Thick"
-    blade_diameter: 78.2
+    blade_diameter: 81.4
   SpindleC:
     type: "Med"
-    blade_diameter: 78.2
+    blade_diameter: 81.4
   SpindleD:
     type: "Thin"
-    blade_diameter: 78.2
+    blade_diameter: 82.8
 
 orientations:
   0deg:
-    metrology_file_path: 'path to 0deg metrology'
-    base_dir: '/Users/SAT_LF/Lens3/Surface1/Odeg'
+    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_0deg.dat'
+    base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT2/LF/Lens2/Convex/Odeg'
   90deg:
-    metrology_file_path: 'path to 90deg metrology'
-    base_dir: '/Users/SAT_LF/Lens3/Surface1/9Odeg'
+    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_90deg.dat'
+    base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/9Odeg'
   180deg:
-    metrology_file_path: 'path to 180deg metrology'
-    base_dir: '/Users/SAT_LF/Lens3/Surface1/18Odeg'
+    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_180deg.dat'
+    base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/18Odeg'
   270deg:
-    metrology_file_path: 'path to 270deg metrology'
-    base_dir: '/Users/SAT_LF/Lens3/Surface1/27Odeg'
+    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_270deg.dat'
+    base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/27Odeg'
 
 
 

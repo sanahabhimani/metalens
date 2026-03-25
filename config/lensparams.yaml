@@ -1,3 +1,4 @@
+#  for SO SAT LF Lens 2 Convex 0 deg params 
 lensparams:
   R:
     -818.9215895
@@ -17,7 +18,7 @@ lensparams:
     448.0
 
 alignment:
-  xrotshift:
+  x_rot_shift:
     0.0
 
 cut:
