@@ -228,35 +228,57 @@ def get_cut_context(
     similarly, lensparams_config_path is None when generating cuts
     """
     dicing_metadata = load_yaml_config(dicing_metadata_path)
-    testtouch_cfg = load_yaml_config(testtouch_config_path)
 
     shared = get_shared_paths(dicing_metadata)
-    spindle_settings = get_spindle_settings(
-        spindle, dicing_metadata, testtouch_cfg
-    )
-    orientation_settings = get_orientation_settings(
-        spindle, orientation, dicing_metadata, testtouch_cfg
-    )
+
+    if testtouch_config_path is not None:
+        testtouch_cfg = load_yaml_config(testtouch_config_path)
+
+        spindle_settings = get_spindle_settings(
+            spindle, dicing_metadata, testtouch_cfg
+        )
+        orientation_settings = get_orientation_settings(
+            spindle, orientation, dicing_metadata, testtouch_cfg
+        )
+
+        context = {
+            **shared,
+            **spindle_settings,
+            **orientation_settings,
+        }
+
+        context["x_total_shift"] = (
+            context["x_center_shift"] + context["x_postcal_shift"]
+        )
+
+    else:
+        spindle_block = dicing_metadata.get("spindles", {}).get(spindle)
+        if spindle_block is None:
+            raise KeyError(f"Spindle '{spindle}' not found in dicing metadata")
+
+        orientation_block = dicing_metadata.get("orientations", {}).get(orientation)
+        if orientation_block is None:
+            raise KeyError(f"Orientation '{orientation}' not found in dicing metadata")
+
+        context = {
+            **shared,
+            "spindle": spindle,
+            "type": spindle_block["type"],
+            "blade_diameter": spindle_block["blade_diameter"],
+            "orientation": orientation,
+            "metrology_file_path": orientation_block["metrology_file_path"],
+            "base_dir": Path(orientation_block["base_dir"]),
+        }
 
     output_paths = build_cut_output_paths(
-        base_dir=orientation_settings["base_dir"],
+        base_dir=context["base_dir"],
         spindle=spindle,
-        ftype=spindle_settings["type"],
+        ftype=context["type"],
     )
-
-    context = {
-        **shared,
-        **spindle_settings,
-        **orientation_settings,
-        **output_paths,
-    }
+    context.update(output_paths)
 
     if lensparams_config_path is not None:
         lensparams_cfg = load_yaml_config(lensparams_config_path)
         context.update(get_lensparams_settings(lensparams_cfg))
-
-    context["x_total_shift"] = (
-        context["x_center_shift"] + context["x_postcal_shift"]
-    )
 
     return context
