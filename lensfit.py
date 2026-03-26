@@ -9,6 +9,7 @@ import core_utils as cu
 from core_utils import get_cut_parameters, get_spindle_offsets, make_cam_file
 from pathlib import Path
 from datetime import datetime
+import config_helper as ch
 
 
 #### Helper Functions for Lensfit and Generating Cut Camming Files####
@@ -1025,3 +1026,99 @@ def shiftZ_silicon(directory, spindle, ftype, zshift,
         lf.write(f"Applied zshift             : {zshift:+.6f}\n")
 
     print(f"Log written: {logfile}")
+
+def generate_lens_cutfiles_fromconfig(
+    p,
+    p2,
+    spindle,
+    orientation,
+    dicing_metadata_path,
+    testtouch_config_path,
+    lensparams_config_path,
+    afixed,
+    bfixed,
+    use_fit='p',
+    yres=0.500
+):
+    """
+    Generate lens cut camming files using config files.
+
+    Parameters
+    ----------
+    p, p2 : array-like
+        Fit vectors from lensfit(...). Each is [x0, y0, z0, a, b].
+
+    spindle : str
+        Spindle name.
+
+    orientation : str
+        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
+
+    dicing_metadata_path : str
+        Path to dicing_path_metadata.yaml
+
+    testtouch_config_path : str
+        Path to lens_testtouches.yaml
+
+    lensparams_config_path : str
+        Path to lensparams.yaml
+
+    afixed, bfixed : float
+        Fixed rotation values for generate_lens_cut_files(...)
+
+    use_fit : str, optional
+        Either "p" or "p2". Default is "p".
+
+    yres : float, optional
+        Y resolution for generated cut files. Default is 0.500.
+
+    Returns
+    -------
+    str
+        Path to generated cut directory.
+    """
+    context = ch.get_cut_context(
+        spindle=spindle,
+        orientation=orientation,
+        dicing_metadata_path=dicing_metadata_path,
+        testtouch_config_path=testtouch_config_path,
+        lensparams_config_path=lensparams_config_path
+    )
+
+    if not str(context["base_dir"]).endswith("/"):
+        pathname = str(context["base_dir"]) + "/"
+    else:
+        pathname = str(context["base_dir"])
+
+    bladeradius = float(context["blade_diameter"]) / 2.0
+
+    lensparams_dict = context["lensparams"]
+    lensparams = [
+        float(lensparams_dict["R"]),
+        float(lensparams_dict["k"]),
+        float(lensparams_dict["a1"]),
+        float(lensparams_dict["a2"]),
+        float(lensparams_dict["a3"]),
+        float(lensparams_dict["a4"]),
+        float(lensparams_dict["t_ctr"]),
+        float(lensparams_dict["diam"]),
+    ]
+
+    return generate_lens_cut_files(
+        p=p,
+        p2=p2,
+        pathname=pathname,
+        spindle=spindle,
+        calibrationfilepath=context["cal_file_path"],
+        cutparamsfile=context["cutparams_filepath"],
+        cutdiameter=float(context["cut_diam"]),
+        bladeradius=bladeradius,
+        cuttype=context["type"],
+        lensparams=lensparams,
+        afixed=afixed,
+        bfixed=bfixed,
+        stepheight=float(context["step_height"]),
+        use_fit=use_fit,
+        x_rot_shift=float(context["x_rot_shift"]),
+        yres=yres,
+    )
