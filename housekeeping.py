@@ -283,7 +283,7 @@ def generate_hkcut_files_config(
     context = ch.get_cut_context(
         spindle=spindle,
         orientation=orientation,
-        spindles_config_path=dicing_metadata_path,
+        dicing_metadata_path=dicing_metadata_path,
         testtouch_config_path=testtouch_config_path
     )
     if not str(context["base_dir"]).endswith("/"):
@@ -291,7 +291,7 @@ def generate_hkcut_files_config(
     else:
         pathname = str(context["base_dir"])
 
-    bladeradius = context['blade_diameter']/2
+    bladeradius = float(context['blade_diameter']) / 2
 
     return generate_hkcut_files(
         p=p,
