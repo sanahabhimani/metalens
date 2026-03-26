@@ -160,6 +160,79 @@ def lensfit(
         return p, p2
 
 
+def lensfit_fromconfig(
+    spindle,
+    orientation,
+    dicing_metadata_path,
+    lensparams_config_path,
+    afixed,
+    bfixed,
+    plot=True,
+    return_full=False,
+    verbose=True,
+):
+    """
+    Run lensfit using config files.
+
+    Parameters
+    ----------
+    spindle : str
+        Spindle name.
+    orientation : str
+        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
+    dicing_metadata_path : str
+        Path to dicing_path_metadata.yaml
+    lensparams_config_path : str
+        Path to lensparams.yaml
+    afixed, bfixed : float
+        Fixed rotation values used in lensfit(...)
+    plot : bool, optional
+    return_full : bool, optional
+    verbose : bool, optional
+
+    Returns
+    -------
+    Same as lensfit(...)
+    """
+    context = ch.get_cut_context(
+        spindle=spindle,
+        orientation=orientation,
+        dicing_metadata_path=dicing_metadata_path,
+        testtouch_config_path=None,
+        lensparams_config_path=lensparams_config_path,
+    )
+
+    metrology_path = Path(context["metrology_file_path"])
+    pathname = str(metrology_path.parent)
+    if not pathname.endswith("/"):
+        pathname = pathname + "/"
+
+    metrologyfilename = metrology_path.name
+
+    lensparams_dict = context["lensparams"]
+    lensparams = [
+        float(lensparams_dict["R"]),
+        float(lensparams_dict["k"]),
+        float(lensparams_dict["a1"]),
+        float(lensparams_dict["a2"]),
+        float(lensparams_dict["a3"]),
+        float(lensparams_dict["a4"]),
+        float(lensparams_dict["t_ctr"]),
+        float(lensparams_dict["diam"]),
+    ]
+
+    return lensfit(
+        pathname=pathname,
+        metrologyfilename=metrologyfilename,
+        lensparams=lensparams,
+        afixed=afixed,
+        bfixed=bfixed,
+        plot=plot,
+        return_full=return_full,
+        verbose=verbose,
+    )
+
+
 def Flens(rin, lensparams):
     """
     Computes the height of a rotationally symmetric aspheric lens surface
