@@ -71,7 +71,7 @@ def test_calls_generate_hkcut_files_with_context_params(mock_context):
         mock_ctx.assert_called_once_with(
             spindle="S1",
             orientation="Face1",
-            spindles_config_path="/cfg/spindles.yaml",
+            dicing_metadata_path="/cfg/spindles.yaml",
             testtouch_config_path="/cfg/testtouch.yaml",
         )
 
@@ -165,3 +165,17 @@ def test_passes_x_y_and_noshift_suffix_params(
         assert kwargs["ystart"] == ystart
         assert kwargs["yend"] == yend
         assert kwargs["use_noshift_suffix"] == use_noshift_suffix
+
+@pytest.mark.parametrize("blade_diameter,expected_radius", [
+    ("100.0", 50.0),
+    ("54.0", 27.0),
+])
+def test_hk_config_converts_string_blade_diameter(mock_context, blade_diameter, expected_radius):
+    mock_context["blade_diameter"] = blade_diameter
+
+    with patch("housekeeping.ch.get_cut_context", return_value=mock_context), \
+         patch("housekeeping.generate_hkcut_files") as mock_gen:
+
+        _call_config()
+
+        assert mock_gen.call_args.kwargs["bladeradius"] == expected_radius
