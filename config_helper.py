@@ -206,7 +206,7 @@ def get_cut_context(
     spindle,
     orientation,
     dicing_metadata_path,
-    testtouch_config_path,
+    testtouch_config_path=None,
     lensparams_config_path=None,
 ):
     """
@@ -217,12 +217,15 @@ def get_cut_context(
     spindle : str
     orientation : str
     dicing_config_path : str
-    testtouch_config_path : str
+    testtouch_config_path : str or None
     lensparams_config_path : str or None
 
     Returns
     -------
     dict
+
+    Note: testotuch_config_path is None when using `lensfit_fromconfig`, and
+    similarly, lensparams_config_path is None when generating cuts
     """
     dicing_metadata = load_yaml_config(dicing_metadata_path)
     testtouch_cfg = load_yaml_config(testtouch_config_path)
