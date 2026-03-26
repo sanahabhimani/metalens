@@ -205,7 +205,7 @@ def build_cut_output_paths(base_dir, spindle, ftype):
 def get_cut_context(
     spindle,
     orientation,
-    spindles_config_path,
+    dicing_metadata_path,
     testtouch_config_path,
     lensparams_config_path=None,
 ):
@@ -216,7 +216,7 @@ def get_cut_context(
     ----------
     spindle : str
     orientation : str
-    spindles_config_path : str
+    dicing_config_path : str
     testtouch_config_path : str
     lensparams_config_path : str or None
 
@@ -224,15 +224,15 @@ def get_cut_context(
     -------
     dict
     """
-    spindles_cfg = load_yaml_config(spindles_config_path)
+    dicing_metadata = load_yaml_config(dicing_metadata_path)
     testtouch_cfg = load_yaml_config(testtouch_config_path)
 
-    shared = get_shared_paths(spindles_cfg)
+    shared = get_shared_paths(dicing_metadata)
     spindle_settings = get_spindle_settings(
-        spindle, spindles_cfg, testtouch_cfg
+        spindle, dicing_metadata, testtouch_cfg
     )
     orientation_settings = get_orientation_settings(
-        spindle, orientation, spindles_cfg, testtouch_cfg
+        spindle, orientation, dicing_metadata, testtouch_cfg
     )
 
     output_paths = build_cut_output_paths(
