@@ -159,9 +159,7 @@ def lensfit(
     else:
         return p, p2
 
-
 def lensfit_fromconfig(
-    spindle,
     orientation,
     dicing_metadata_path,
     lensparams_config_path,
@@ -171,45 +169,23 @@ def lensfit_fromconfig(
     return_full=False,
     verbose=True,
 ):
-    """
-    Run lensfit using config files.
+    dicing_metadata = ch.load_yaml_config(dicing_metadata_path)
 
-    Parameters
-    ----------
-    spindle : str
-        Spindle name.
-    orientation : str
-        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
-    dicing_metadata_path : str
-        Path to dicing_path_metadata.yaml
-    lensparams_config_path : str
-        Path to lensparams.yaml
-    afixed, bfixed : float
-        Fixed rotation values used in lensfit(...)
-    plot : bool, optional
-    return_full : bool, optional
-    verbose : bool, optional
+    orientation_block = dicing_metadata["orientations"][orientation]
 
-    Returns
-    -------
-    Same as lensfit(...)
-    """
-    context = ch.get_cut_context(
-        spindle=spindle,
-        orientation=orientation,
-        dicing_metadata_path=dicing_metadata_path,
-        testtouch_config_path=None,
-        lensparams_config_path=lensparams_config_path,
-    )
+    metrology_path = Path(orientation_block["metrology_file_path"])
 
-    metrology_path = Path(context["metrology_file_path"])
     pathname = str(metrology_path.parent)
     if not pathname.endswith("/"):
-        pathname = pathname + "/"
+        pathname += "/"
 
     metrologyfilename = metrology_path.name
 
-    lensparams_dict = context["lensparams"]
+    lensparams_cfg = ch.load_yaml_config(lensparams_config_path)
+    lensparams_settings = ch.get_lensparams_settings(lensparams_cfg)
+
+    lensparams_dict = lensparams_settings["lensparams"]
+
     lensparams = [
         float(lensparams_dict["R"]),
         float(lensparams_dict["k"]),
@@ -231,7 +207,6 @@ def lensfit_fromconfig(
         return_full=return_full,
         verbose=verbose,
     )
-
 
 def Flens(rin, lensparams):
     """

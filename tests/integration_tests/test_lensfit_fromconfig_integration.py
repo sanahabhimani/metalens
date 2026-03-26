@@ -165,7 +165,6 @@ def test_lensfit_fromconfig_matches_legacy(tmp_path):
     # Config-driven call
     # -----------------------------------------------------------------------
     p_cfg, p2_cfg = lensfit.lensfit_fromconfig(
-        spindle="S1",
         orientation="0deg",
         dicing_metadata_path=str(dicing_yaml),
         lensparams_config_path=str(lensparams_yaml),
