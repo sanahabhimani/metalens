@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from pathlib import Path
+import config_helper as ch
 
 
 def check_metrology_probe(comport):
@@ -507,3 +508,46 @@ def shiftXZ_nocomp(directory, ftype, xshift, zshift):
             make_cam_file(camname_prefix, num, xs[i], yscam, zscam)
 
             mfile_out.write(f"{linenum} {xsout[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
+
+def shiftXZ_nocomp_fromconfig(
+    spindle,
+    orientation,
+    dicing_metadata_path,
+    testtouch_config_path,
+):
+    """
+    Apply x and z shifts to the no-shift CAM/Master files using config files.
+
+    Parameters
+    ----------
+    spindle : str
+        Spindle name.
+    orientation : str
+        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
+    dicing_metadata_path : str
+        Path to dicing_path_metadata.yaml
+    testtouch_config_path : str
+        Path to lens_testtouches.yaml
+
+    Returns
+    -------
+    None
+    """
+    context = ch.get_cut_context(
+        spindle=spindle,
+        orientation=orientation,
+        dicing_metadata_path=dicing_metadata_path,
+        testtouch_config_path=testtouch_config_path,
+    )
+
+    directory = Path(context["base_dir"]) / context["spindle"]
+    ftype = context["type"]
+    xshift = context["x_total_shift"]
+    zshift = context["zcorr"]
+
+    return shiftXZ_nocomp(
+        directory=directory,
+        ftype=ftype,
+        xshift=xshift,
+        zshift=zshift,
+    )
