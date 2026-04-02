@@ -5,6 +5,8 @@ from matplotlib import cm
 from scipy import optimize as opt
 from scipy import interpolate
 from matplotlib.ticker import FuncFormatter
+from pathlib import Path
+import config_helper as ch
 
 import core_utils as cu
 
@@ -181,7 +183,8 @@ def planefit(filepath, do_plot=True):
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
 
-def fit_flange(path, flangemetfile, do_plot=False):
+#def fit_flange(path, flangemetfile, do_plot=False):
+def fit_flange(orientation, path, do_plot=False):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
     in two directions (around X and Y axes), and return the negative rotation angles.
@@ -206,7 +209,12 @@ def fit_flange(path, flangemetfile, do_plot=False):
     - The model previously used a function F(x, y) that returned a constant 0.5 
       as a flat surface offset. This has been inlined directly into the return statement.
     """
-    flangemetpath = path + flangemetfile
+
+    dicing_metadata = ch.load_yaml_config(path)
+    orientation_block = dicing_metadata["orientations"][orientation]
+    flangemetpath = Path(orientation_block["flange_metrology_file_path"])
+
+    #flangemetpath = flangemetfile
     pts = np.loadtxt(flangemetpath, delimiter=',')
 
     xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]

@@ -120,7 +120,7 @@ def get_orientation_settings(spindle, orientation, spindles_cfg, testtouch_cfg):
 
     return {
         "orientation": orientation,
-        "metrology_file_path": orientation_block["metrology_file_path"],
+        "metrology_file_path": orientation_block["lens_metrology_file_path"],
         "base_dir": orientation_block["base_dir"],
         "zcorr": parse_signed_value(zcorr),
     }

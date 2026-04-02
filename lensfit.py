@@ -75,6 +75,7 @@ def lensfit(
             Full leastsq diagnostic output from the F-based model in addition.
     """
     # 1. Load metrology data
+    #pts = np.loadtxt(metrologyfilename, delimiter=',')
     pts = np.loadtxt(pathname + metrologyfilename, delimiter=',')
     xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
     qin = zin + r
@@ -170,10 +171,9 @@ def lensfit_fromconfig(
     verbose=True,
 ):
     dicing_metadata = ch.load_yaml_config(dicing_metadata_path)
-
     orientation_block = dicing_metadata["orientations"][orientation]
-
-    metrology_path = Path(orientation_block["metrology_file_path"])
+    metrology_path = Path(orientation_block["lens_metrology_file_path"])
+    cutsfile_path = Path(orientation_block["base_dir"])
 
     pathname = str(metrology_path.parent)
     if not pathname.endswith("/"):
@@ -198,6 +198,7 @@ def lensfit_fromconfig(
     ]
 
     return lensfit(
+        #pathname=cutsfile_path,
         pathname=pathname,
         metrologyfilename=metrologyfilename,
         lensparams=lensparams,
