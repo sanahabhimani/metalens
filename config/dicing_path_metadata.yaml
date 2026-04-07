@@ -15,19 +15,19 @@ spindles:
 
 orientations:
   0deg:
-    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_0deg.dat'
+    lens_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_0deg.dat'
     flange_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Flange_Met_0deg.dat'
     base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT2/LF/Lens2/Convex/Odeg'
   90deg:
-    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_90deg.dat'
+    lens_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_90deg.dat'
     flange_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2    /Convex/0deg/Flange_Met_90deg.dat'
     base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/9Odeg'
   180deg:
-    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_180deg.dat'
+    lens_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_180deg.dat'
     flange_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2    /Convex/0deg/Flange_Met_180deg.dat'
     base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/18Odeg'
   270deg:
-    metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_270deg.dat'
+    lens_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/0deg/Lens_Met_270deg.dat'
     flange_metrology_file_path: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2    /Convex/0deg/Flange_Met_270deg.dat'
     base_dir: '/Users/sanuma/LF_lens2_reproduce2/SO_SAT/LF/Lens2/Convex/27Odeg'
 
