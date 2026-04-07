@@ -242,8 +242,8 @@ def test_get_orientation_settings_returns_expected_values(loaded_configs):
 def test_get_orientation_settings_raises_for_unknown_orientation(loaded_configs):
     with pytest.raises(KeyError):
         ch.get_orientation_settings(
-            "S1",
-            "Face999",
+            "SpindleB",
+            "360deg",
             loaded_configs["dicing_metadata"],
             loaded_configs["testtouch_cfg"],
         )
@@ -271,7 +271,7 @@ def test_get_lensparams_settings_returns_expected_values(loaded_configs):
 def test_build_cut_output_paths_returns_expected_paths():
     paths = ch.build_cut_output_paths(
         base_dir="/tmp/0deg",
-        spindle="S1",
+        spindle="SpindleB",
         ftype="Thick",
     )
 
@@ -299,14 +299,15 @@ def test_get_cut_context_returns_expected_merged_context(config_files):
 
     assert context["cal_file_path"] == "/tmp/SpindleCal.txt"
     assert context["cutparams_filepath"] == "/tmp/cutparams.txt"
-    assert context["spindle"] == "S1"
+    assert context["spindle"] == "SpindleB"
     assert context["type"] == "Thick"
-    assert context["blade_diameter"] == 100.0
+    assert context["blade_diameter"] == 81.4
     assert context["x_center_shift"] == 0.250
     assert context["x_postcal_shift"] == 0.125
     assert context["y_postcal_shift"] == -0.050
     assert context["orientation"] == "0deg"
-    assert context["metrology_file_path"] == "/tmp/Lens_Met_0deg.dat"
+    assert context["lens_metrology_file_path"] == "/tmp/Lens_Met_0deg.dat"
+    assert context["flange_metrology_file_path"] == "/tmp/Flange_Met_0deg.dat"
     assert str(context["base_dir"]) == "/tmp/0deg"
     assert context["zcorr"] == -0.125
     assert context["x_total_shift"] == 0.375
