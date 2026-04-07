@@ -10,14 +10,15 @@ import config_helper as ch
 
 def _write_dicing_metadata_yaml(
     path,
-    base_dir="/tmp/Face1",
+    base_dir="/tmp/0deg",
     cal_file_path="/tmp/SpindleCal.txt",
     cutparams_filepath="/tmp/cutparams.txt",
-    metrology_file_path="/tmp/Lens_Met_Face1.dat",
-    spindle="S1",
+    lens_metrology_file_path="/tmp/Lens_Met_0deg.dat",
+    flange_metrology_file_path="/tmp/Flange_Met_0deg.dat",
+    spindle="SpindleB",
     cuttype="Thick",
-    blade_diameter=100.0,
-    orientation="Face1",
+    blade_diameter=81.4,
+    orientation="0deg",
 ):
     path = Path(path)
     path.write_text(
@@ -32,7 +33,8 @@ def _write_dicing_metadata_yaml(
         f"\n"
         f"orientations:\n"
         f"  {orientation}:\n"
-        f"    metrology_file_path: '{metrology_file_path}'\n"
+        f"    lens_metrology_file_path: '{lens_metrology_file_path}'\n"
+        f"    flange_metrology_file_path: '{flange_metrology_file_path}'\n"
         f"    base_dir: '{base_dir}'\n"
     )
     return path
@@ -40,8 +42,8 @@ def _write_dicing_metadata_yaml(
 
 def _write_testtouch_yaml(
     path,
-    spindle="S1",
-    orientation="Face1",
+    spindle="SpindleB",
+    orientation="0deg",
     x_center_shift="+0.250",
     x_postcal_shift="+0.125",
     y_postcal_shift="-0.050",
@@ -55,7 +57,7 @@ def _write_testtouch_yaml(
         f"  y_postcal_shift: '{y_postcal_shift}'\n"
         f"  zcorr:\n"
         f"    {orientation}: '{zcorr}'\n"
-        f"    Face2: '0'\n"
+        f"    90deg: '0'\n"
     )
     return path
 
@@ -192,20 +194,20 @@ def test_get_shared_paths_returns_expected_values(loaded_configs):
 
 def test_get_spindle_settings_returns_expected_values(loaded_configs):
     spindle_settings = ch.get_spindle_settings(
-        "S1",
+        "SpindleB",
         loaded_configs["dicing_metadata"],
         loaded_configs["testtouch_cfg"],
     )
 
-    assert spindle_settings["spindle"] == "S1"
+    assert spindle_settings["spindle"] == "SpindleB"
     assert spindle_settings["type"] == "Thick"
-    assert spindle_settings["blade_diameter"] == 100.0
+    assert spindle_settings["blade_diameter"] == 81.4
     assert spindle_settings["x_center_shift"] == 0.250
     assert spindle_settings["x_postcal_shift"] == 0.125
     assert spindle_settings["y_postcal_shift"] == -0.050
     assert spindle_settings["zcorr_by_orientation"] == {
-        "Face1": "-0.125",
-        "Face2": "0",
+        "0deg": "-0.125",
+        "90deg": "0",
     }
 
 
@@ -224,15 +226,16 @@ def test_get_spindle_settings_raises_for_unknown_spindle(loaded_configs):
 
 def test_get_orientation_settings_returns_expected_values(loaded_configs):
     orientation_settings = ch.get_orientation_settings(
-        "S1",
-        "Face1",
+        "SpindleB",
+        "0deg",
         loaded_configs["dicing_metadata"],
         loaded_configs["testtouch_cfg"],
     )
 
-    assert orientation_settings["orientation"] == "Face1"
-    assert orientation_settings["metrology_file_path"] == "/tmp/Lens_Met_Face1.dat"
-    assert str(orientation_settings["base_dir"]) == "/tmp/Face1"
+    assert orientation_settings["orientation"] == "0deg"
+    assert orientation_settings["lens_metrology_file_path"] == "/tmp/Lens_Met_0deg.dat"
+    assert orientation_settings["flange_metrology_file_path"] == "/tmp/Flange_Met_0deg.dat"
+    assert str(orientation_settings["base_dir"]) == "/tmp/0deg"
     assert orientation_settings["zcorr"] == -0.125
 
 
@@ -267,17 +270,17 @@ def test_get_lensparams_settings_returns_expected_values(loaded_configs):
 
 def test_build_cut_output_paths_returns_expected_paths():
     paths = ch.build_cut_output_paths(
-        base_dir="/tmp/Face1",
+        base_dir="/tmp/0deg",
         spindle="S1",
         ftype="Thick",
     )
 
-    assert str(paths["base_dir"]) == "/tmp/Face1"
-    assert str(paths["spindle_dir"]) == "/tmp/Face1/S1"
-    assert str(paths["noshift_dir"]) == "/tmp/Face1/S1/CutCammingThick-Noshift"
-    assert str(paths["shifted_dir"]) == "/tmp/Face1/S1/CutCammingThick"
-    assert str(paths["noshift_master"]) == "/tmp/Face1/S1/CutCammingThick-Noshift/Master.txt"
-    assert str(paths["shifted_master"]) == "/tmp/Face1/S1/CutCammingThick/Master.txt"
+    assert str(paths["base_dir"]) == "/tmp/0deg"
+    assert str(paths["spindle_dir"]) == "/tmp/0deg/SpindleB"
+    assert str(paths["noshift_dir"]) == "/tmp/0deg/SpindleB/CutCammingThick-Noshift"
+    assert str(paths["shifted_dir"]) == "/tmp/0deg/SpindleB/CutCammingThick"
+    assert str(paths["noshift_master"]) == "/tmp/0deg/SpindleB/CutCammingThick-Noshift/Master.txt"
+    assert str(paths["shifted_master"]) == "/tmp/0deg/SpindleB/CutCammingThick/Master.txt"
     assert paths["cam_prefix"] == "CutCamThick"
 
 
@@ -287,8 +290,8 @@ def test_build_cut_output_paths_returns_expected_paths():
 
 def test_get_cut_context_returns_expected_merged_context(config_files):
     context = ch.get_cut_context(
-        spindle="S1",
-        orientation="Face1",
+        spindle="SpindleB",
+        orientation="0deg",
         dicing_metadata_path=config_files["dicing_metadata_path"],
         testtouch_config_path=config_files["testtouch_config_path"],
         lensparams_config_path=config_files["lensparams_config_path"],
@@ -302,9 +305,9 @@ def test_get_cut_context_returns_expected_merged_context(config_files):
     assert context["x_center_shift"] == 0.250
     assert context["x_postcal_shift"] == 0.125
     assert context["y_postcal_shift"] == -0.050
-    assert context["orientation"] == "Face1"
-    assert context["metrology_file_path"] == "/tmp/Lens_Met_Face1.dat"
-    assert str(context["base_dir"]) == "/tmp/Face1"
+    assert context["orientation"] == "0deg"
+    assert context["metrology_file_path"] == "/tmp/Lens_Met_0deg.dat"
+    assert str(context["base_dir"]) == "/tmp/0deg"
     assert context["zcorr"] == -0.125
     assert context["x_total_shift"] == 0.375
     assert context["x_rot_shift"] == 0.0
@@ -315,15 +318,15 @@ def test_get_cut_context_returns_expected_merged_context(config_files):
 
 def test_get_cut_context_without_lensparams_still_works(config_files):
     context = ch.get_cut_context(
-        spindle="S1",
-        orientation="Face1",
+        spindle="SpindleB",
+        orientation="0deg",
         dicing_metadata_path=config_files["dicing_metadata_path"],
         testtouch_config_path=config_files["testtouch_config_path"],
         lensparams_config_path=None,
     )
 
-    assert context["spindle"] == "S1"
-    assert context["orientation"] == "Face1"
+    assert context["spindle"] == "SpindleB"
+    assert context["orientation"] == "0deg"
     assert context["x_total_shift"] == 0.375
     assert "lensparams" not in context
     assert "x_rot_shift" not in context
