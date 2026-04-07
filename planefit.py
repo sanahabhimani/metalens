@@ -183,7 +183,7 @@ def planefit(filepath, do_plot=True):
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
 
-def fit_flange(orientation, path, do_plot=False):
+def fit_flange(orientation, dicing_metadata_path, do_plot=False):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
     in two directions (around X and Y axes), and return the negative rotation angles.
