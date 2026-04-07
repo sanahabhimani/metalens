@@ -183,7 +183,6 @@ def planefit(filepath, do_plot=True):
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
 
-#def fit_flange(path, flangemetfile, do_plot=False):
 def fit_flange(orientation, path, do_plot=False):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
@@ -191,10 +190,16 @@ def fit_flange(orientation, path, do_plot=False):
 
     Parameters
     ----------
-    path : str
-        Path to the directory containing the flange metrology file.
-    flangemetfile : str
-        Filename of the flange metrology .csv/.dat/.txt file.
+    orientation : str
+        Orientation key used to look up the flange metrology file path in the
+        dicing metadata YAML config (for example, '0deg', '90deg', etc.).
+
+    dicing_metadata_path : str or pathlib.Path
+        Path to the dicing metadata YAML config file.
+
+    do_plot : bool, optional
+        If True, generate diagnostic 3D plots of the raw data, residuals, and
+        gauge readout. Default is False.
 
     Returns
     -------
@@ -203,18 +208,25 @@ def fit_flange(orientation, path, do_plot=False):
 
     Notes
     -----
-    - The metrology file must be a file with four columns: X, Y, Z, and gauge offset (r).
-    - The fit minimizes Z + r using a rotated coordinate system.
-    - Assumes small angles for a and b (on the order of 10^-4).
-    - The model previously used a function F(x, y) that returned a constant 0.5 
-      as a flat surface offset. This has been inlined directly into the return statement.
-    """
+    - The YAML config is loaded with `config_helper.load_yaml_config`, and the
+      flange metrology file is taken from:
+          dicing_metadata["orientations"][orientation]["flange_metrology_file_path"]
+    - The metrology file is expected to contain four columns:
+          X, Y, Z, gauge_offset
+    - The fit is performed on:
+          q = Z + gauge_offset
+    - The least-squares model solves for five parameters:
+          [a, b, x0, y0, z0]
+      where a and b are small rotation angles, and x0, y0, z0 are translation
+      offsets.
+    - The returned values are the negatives of the fitted angles, matching the
+      convention used elsewhere in this workflow.
 
-    dicing_metadata = ch.load_yaml_config(path)
+      """
+    dicing_metadata = ch.load_yaml_config(dicing_metadata_path)
     orientation_block = dicing_metadata["orientations"][orientation]
     flangemetpath = Path(orientation_block["flange_metrology_file_path"])
 
-    #flangemetpath = flangemetfile
     pts = np.loadtxt(flangemetpath, delimiter=',')
 
     xin, yin, zin, r = pts[:, 0], pts[:, 1], pts[:, 2], pts[:, 3]
