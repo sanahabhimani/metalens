@@ -315,7 +315,7 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
     z0 = p[2]
     a = afixed  # override input a
     b = bfixed  # override input b
-
+    
     xmod = x - x0
     ymod = y - y0
 
@@ -328,6 +328,7 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
 
     pt = np.asmatrix([[xmod], [ymod], [z1]])
     newpt = A @ B @ pt
+    newpt = np.asarray(newpt).ravel()
     x2, y2, z2 = newpt
 
     dx1 = float(x2 - xmod)
@@ -339,6 +340,7 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
 
     ptn1 = np.asmatrix([[xn1], [yn1], [zn1]])
     newptn1 = A @ B @ ptn1
+    newptn1 = np.asarray(newptn1).ravel()
     xn2, yn2, zn2 = newptn1
 
     dx = float(xn2 - xmod)
@@ -350,6 +352,7 @@ def Flrt(p, x, y, afixed, bfixed, lensparams):
 
     ptn3 = np.asmatrix([[xn3], [yn3], [zn3]])
     newptn3 = A @ B @ ptn3
+    newptn3 = np.asarray(newptn3).ravel()
 
     xn4, yn4, zn4 = newptn3
 
@@ -447,7 +450,8 @@ def Fnew(p, x, y, q, afixed, bfixed, lensparams):
     B = np.asmatrix([[np.cos(b), 0, -np.sin(b)], [0, 1, 0], [np.sin(b), 0, np.cos(b)]])
 
     pt = np.asmatrix([[x - x0], [y - y0], [q]])  # Rotate then translate
-    newpt = A * B * pt
+    newpt = np.asarray(A * B * pt).ravel()
+
     xr = float(newpt[0])
     yr = float(newpt[1])
     zr = float(newpt[2])
@@ -1082,7 +1086,6 @@ def generate_lens_cutfiles_fromconfig(
     spindle,
     orientation,
     dicing_metadata_path,
-    testtouch_config_path,
     lensparams_config_path,
     afixed,
     bfixed,
@@ -1106,9 +1109,6 @@ def generate_lens_cutfiles_fromconfig(
     dicing_metadata_path : str
         Path to dicing_path_metadata.yaml
 
-    testtouch_config_path : str
-        Path to lens_testtouches.yaml
-
     lensparams_config_path : str
         Path to lensparams.yaml
 
@@ -1130,7 +1130,6 @@ def generate_lens_cutfiles_fromconfig(
         spindle=spindle,
         orientation=orientation,
         dicing_metadata_path=dicing_metadata_path,
-        testtouch_config_path=testtouch_config_path,
         lensparams_config_path=lensparams_config_path
     )
 
