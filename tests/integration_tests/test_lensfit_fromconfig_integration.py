@@ -32,7 +32,7 @@ def _write_dicing_metadata_yaml(
         f"\n"
         f"orientations:\n"
         f"  {orientation}:\n"
-        f"    metrology_file_path: '{metrology_file_path}'\n"
+        f"    lens_metrology_file_path: '{metrology_file_path}'\n"
         f"    base_dir: '{base_dir}'\n"
     )
     return path

@@ -65,7 +65,7 @@ def _write_dicing_metadata_yaml(
         f"\n"
         f"orientations:\n"
         f"  {orientation}:\n"
-        f"    metrology_file_path: '{metrology_file_path}'\n"
+        f"    lens_metrology_file_path: '{metrology_file_path}'\n"
         f"    base_dir: '{base_dir}'\n"
     )
     return path
@@ -351,7 +351,6 @@ def test_build_cut_directories_lens_config_matches_legacy(tmp_path):
             spindle="S1",
             orientation="Face1",
             dicing_metadata_path=str(dicing_yaml),
-            testtouch_config_path=str(testtouch_yaml),
             lensparams_config_path=str(lensparams_yaml),
             afixed=0.1,
             bfixed=0.2,

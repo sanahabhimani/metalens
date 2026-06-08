@@ -14,6 +14,7 @@ def _write_dicing_metadata_yaml(
     cal_file_path="/tmp/SpindleCal.txt",
     cutparams_filepath="/tmp/cutparams.txt",
     lens_metrology_file_path="/tmp/Lens_Met_0deg.dat",
+    plane_metrology_file_path="/tmp/Plane_Met_0deg.dat",
     flange_metrology_file_path="/tmp/Flange_Met_0deg.dat",
     spindle="SpindleB",
     cuttype="Thick",
@@ -21,6 +22,7 @@ def _write_dicing_metadata_yaml(
     orientation="0deg",
 ):
     path = Path(path)
+
     path.write_text(
         f"paths:\n"
         f"  cal_file_path: '{cal_file_path}'\n"
@@ -34,11 +36,12 @@ def _write_dicing_metadata_yaml(
         f"orientations:\n"
         f"  {orientation}:\n"
         f"    lens_metrology_file_path: '{lens_metrology_file_path}'\n"
+        f"    plane_metrology_file_path: '{plane_metrology_file_path}'\n"
         f"    flange_metrology_file_path: '{flange_metrology_file_path}'\n"
         f"    base_dir: '{base_dir}'\n"
     )
-    return path
 
+    return path
 
 def _write_testtouch_yaml(
     path,
@@ -97,6 +100,22 @@ def _write_lensparams_yaml(
     )
     return path
 
+def _write_planarparams_yaml(
+    path,
+    cut_diam=459.0,
+    xcenter=83.255,
+    ycenter=365.741,
+):
+    path = Path(path)
+
+    path.write_text(
+        "planarparams:\n"
+        f"  cut_diam: {cut_diam}\n"
+        f"  xcenter: {xcenter}\n"
+        f"  ycenter: {ycenter}\n"
+    )
+
+    return path
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -107,32 +126,50 @@ def config_files(tmp_path):
     dicing_metadata_path = _write_dicing_metadata_yaml(
         tmp_path / "dicing_path_metadata.yaml"
     )
+
     testtouch_config_path = _write_testtouch_yaml(
         tmp_path / "lens_testtouches.yaml"
     )
+
     lensparams_config_path = _write_lensparams_yaml(
         tmp_path / "lensparams.yaml"
+    )
+
+    planarparams_config_path = _write_planarparams_yaml(
+        tmp_path / "planar_params.yaml"
     )
 
     return {
         "dicing_metadata_path": dicing_metadata_path,
         "testtouch_config_path": testtouch_config_path,
         "lensparams_config_path": lensparams_config_path,
+        "planarparams_config_path": planarparams_config_path,
     }
-
 
 @pytest.fixture
 def loaded_configs(config_files):
-    dicing_metadata = ch.load_yaml_config(config_files["dicing_metadata_path"])
-    testtouch_cfg = ch.load_yaml_config(config_files["testtouch_config_path"])
-    lensparams_cfg = ch.load_yaml_config(config_files["lensparams_config_path"])
+    dicing_metadata = ch.load_yaml_config(
+        config_files["dicing_metadata_path"]
+    )
+
+    testtouch_cfg = ch.load_yaml_config(
+        config_files["testtouch_config_path"]
+    )
+
+    lensparams_cfg = ch.load_yaml_config(
+        config_files["lensparams_config_path"]
+    )
+
+    planarparams_cfg = ch.load_yaml_config(
+        config_files["planarparams_config_path"]
+    )
 
     return {
         "dicing_metadata": dicing_metadata,
         "testtouch_cfg": testtouch_cfg,
         "lensparams_cfg": lensparams_cfg,
+        "planarparams_cfg": planarparams_cfg,
     }
-
 
 # ---------------------------------------------------------------------------
 # parse_signed_value
@@ -265,6 +302,43 @@ def test_get_lensparams_settings_returns_expected_values(loaded_configs):
 
 
 # ---------------------------------------------------------------------------
+# get_planarparams_settings
+# ---------------------------------------------------------------------------
+
+def test_get_planarparams_settings_returns_expected_values(loaded_configs):
+    planarparams_settings = ch.get_planarparams_settings(
+        loaded_configs["planarparams_cfg"]
+    )
+
+    assert planarparams_settings["cut_diam"] == 459.0
+    assert planarparams_settings["xcenter"] == 83.255
+    assert planarparams_settings["ycenter"] == 365.741
+
+@pytest.mark.parametrize(
+    "missing_key",
+    [
+        "cut_diam",
+        "xcenter",
+        "ycenter",
+    ],
+)
+def test_get_planarparams_settings_raises_when_required_value_missing(
+    missing_key,
+):
+    cfg = {
+        "planarparams": {
+            "cut_diam": 459.0,
+            "xcenter": 83.255,
+            "ycenter": 365.741,
+        }
+    }
+
+    del cfg["planarparams"][missing_key]
+
+    with pytest.raises(KeyError, match=missing_key):
+        ch.get_planarparams_settings(cfg)
+
+# ---------------------------------------------------------------------------
 # build_cut_output_paths
 # ---------------------------------------------------------------------------
 
@@ -333,3 +407,72 @@ def test_get_cut_context_without_lensparams_still_works(config_files):
     assert "x_rot_shift" not in context
     assert "step_height" not in context
     assert "cut_diam" not in context
+
+
+def test_get_cut_context_with_planarparams_returns_expected_values(
+    config_files,
+):
+    context = ch.get_cut_context(
+        spindle="SpindleB",
+        orientation="0deg",
+        dicing_metadata_path=config_files["dicing_metadata_path"],
+        planarparams_config_path=config_files["planarparams_config_path"],
+    )
+
+    assert context["cal_file_path"] == "/tmp/SpindleCal.txt"
+    assert context["cutparams_filepath"] == "/tmp/cutparams.txt"
+
+    assert context["spindle"] == "SpindleB"
+    assert context["type"] == "Thick"
+    assert context["blade_diameter"] == 81.4
+
+    assert context["orientation"] == "0deg"
+    assert context["lens_metrology_file_path"] == "/tmp/Lens_Met_0deg.dat"
+    assert context["plane_metrology_file_path"] == "/tmp/Plane_Met_0deg.dat"
+    assert context["flange_metrology_file_path"] == "/tmp/Flange_Met_0deg.dat"
+
+    assert str(context["base_dir"]) == "/tmp/0deg"
+
+    assert context["cut_diam"] == 459.0
+    assert context["xcenter"] == 83.255
+    assert context["ycenter"] == 365.741
+
+
+def test_get_cut_context_for_planar_surface_does_not_require_lens_metrology_path(
+    tmp_path,
+):
+    dicing_metadata_path = tmp_path / "dicing_path_metadata.yaml"
+
+    dicing_metadata_path.write_text(
+        "paths:\n"
+        "  cal_file_path: '/tmp/SpindleCal.txt'\n"
+        "  cutparams_filepath: '/tmp/cutparams.txt'\n"
+        "\n"
+        "spindles:\n"
+        "  SpindleB:\n"
+        "    type: 'Thick'\n"
+        "    blade_diameter: 81.4\n"
+        "\n"
+        "orientations:\n"
+        "  0deg:\n"
+        "    plane_metrology_file_path: '/tmp/Surface2_Plane_Met_0deg.dat'\n"
+        "    flange_metrology_file_path: '/tmp/Flange_Met_0deg.dat'\n"
+        "    base_dir: '/tmp/Surface2/0deg'\n"
+    )
+
+    planarparams_config_path = _write_planarparams_yaml(
+        tmp_path / "planar_params.yaml"
+    )
+
+    context = ch.get_cut_context(
+        spindle="SpindleB",
+        orientation="0deg",
+        dicing_metadata_path=dicing_metadata_path,
+        planarparams_config_path=planarparams_config_path,
+    )
+
+    assert context["lens_metrology_file_path"] is None
+    assert (
+        context["plane_metrology_file_path"]
+        == "/tmp/Surface2_Plane_Met_0deg.dat"
+    )

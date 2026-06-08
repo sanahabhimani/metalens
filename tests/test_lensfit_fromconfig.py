@@ -6,7 +6,7 @@ def test_lensfit_fromconfig_calls_lensfit_with_expected_args():
     fake_dicing_metadata = {
         "orientations": {
             "0deg": {
-                "metrology_file_path": "/tmp/Convex/0deg/Lens_Met_0deg.dat"
+                "lens_metrology_file_path": "/tmp/Convex/0deg/Lens_Met_0deg.dat"
             }
         }
     }

@@ -39,7 +39,6 @@ def _call_config(
     spindle="S1",
     orientation="Face1",
     dicing_metadata_path="/cfg/dicing_path_metadata.yaml",
-    testtouch_config_path="/cfg/testtouch.yaml",
     lensparams_config_path="/cfg/lensparams.yaml",
     afixed=0.1,
     bfixed=0.2,
@@ -58,7 +57,6 @@ def _call_config(
         spindle=spindle,
         orientation=orientation,
         dicing_metadata_path=dicing_metadata_path,
-        testtouch_config_path=testtouch_config_path,
         lensparams_config_path=lensparams_config_path,
         afixed=afixed,
         bfixed=bfixed,
@@ -86,7 +84,6 @@ def test_calls_generate_lens_cut_files_with_context_params(mock_context):
             spindle="S1",
             orientation="Face1",
             dicing_metadata_path="/cfg/dicing_path_metadata.yaml",
-            testtouch_config_path="/cfg/testtouch.yaml",
             lensparams_config_path="/cfg/lensparams.yaml",
             afixed=0.1,
             bfixed=0.2,
@@ -98,7 +95,6 @@ def test_calls_generate_lens_cut_files_with_context_params(mock_context):
             spindle="S1",
             orientation="Face1",
             dicing_metadata_path="/cfg/dicing_path_metadata.yaml",
-            testtouch_config_path="/cfg/testtouch.yaml",
             lensparams_config_path="/cfg/lensparams.yaml",
         )
 
