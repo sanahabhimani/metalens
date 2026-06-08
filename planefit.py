@@ -414,7 +414,7 @@ def generate_planar_files(
             zs[i] = F(xx, yy, *p) + correction - zoffset + bladeradius - depth - measrad
 
         fname = os.path.join(cutpath, f'CutCam{flag}')
-        make_cam_file(fname, j, xx + xoffset, ys + yoffset, zs)
+        cu.make_cam_file(fname, j, xx + xoffset, ys + yoffset, zs)
 
         xvar = xx + xoffset
         xstr = '%.3f' % xvar
