@@ -120,12 +120,12 @@ def get_orientation_settings(spindle, orientation, spindles_cfg, testtouch_cfg):
 
     return {
         "orientation": orientation,
-        "lens_metrology_file_path": orientation_block["lens_metrology_file_path"],
-        "flange_metrology_file_path": orientation_block["flange_metrology_file_path"],
+        "lens_metrology_file_path": orientation_block.get("lens_metrology_file_path"),
+        "plane_metrology_file_path": orientation_block.get("plane_metrology_file_path"),
+        "flange_metrology_file_path": orientation_block.get("flange_metrology_file_path"),
         "base_dir": orientation_block["base_dir"],
         "zcorr": parse_signed_value(zcorr),
     }
-
 
 def get_shared_paths(spindles_cfg):
     """
@@ -305,7 +305,7 @@ def get_cut_context(
             "orientation": orientation,
             "lens_metrology_file_path": orientation_block.get("lens_metrology_file_path"),
             "plane_metrology_file_path": orientation_block.get("plane_metrology_file_path"),
-            "flange_metrology_file_path": orientation_block["flange_metrology_file_path"],
+            "flange_metrology_file_path": orientation_block.get("flange_metrology_file_path"),
             "base_dir": Path(orientation_block["base_dir"]),
         }
 
