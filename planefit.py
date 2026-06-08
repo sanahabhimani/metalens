@@ -183,6 +183,47 @@ def planefit(filepath, do_plot=True):
     return p, corrections, zmodel, residuals, corrected_residuals, xin, yin, A_coef
 
 
+def planefit_fromconfig(
+    orientation,
+    dicing_metadata_path,
+    do_plot=True,
+):
+    """
+    Perform plane fitting using the planar metrology file path stored in
+    dicing_path_metadata.yaml.
+
+    Parameters
+    ----------
+    orientation : str
+        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
+
+    dicing_metadata_path : str or pathlib.Path
+        Path to dicing_path_metadata.yaml.
+
+    do_plot : bool, optional
+        Whether to generate diagnostic contour plots. Default is True.
+
+    Returns
+    -------
+    tuple
+        Output returned directly by planefit(...):
+        p, corrections, zmodel, residuals, corrected_residuals,
+        xin, yin, A_coef
+    """
+    dicing_metadata = ch.load_yaml_config(dicing_metadata_path)
+
+    orientation_block = dicing_metadata["orientations"][orientation]
+
+    metrology_path = Path(
+        orientation_block["plane_metrology_file_path"]
+    )
+
+    return planefit(
+        filepath=str(metrology_path),
+        do_plot=do_plot,
+    )
+
+
 def fit_flange(orientation, dicing_metadata_path, do_plot=False):
     """
     Perform a 3D plane fit on flange metrology data, correcting for angular tilt 
@@ -298,6 +339,319 @@ def fit_flange(orientation, dicing_metadata_path, do_plot=False):
     return -p[0], -p[1]
 
 
+def generate_planar_files(
+    xin,
+    yin,
+    p,
+    A_coef,
+    pathname,
+    spindle,
+    calibrationfilepath,
+    cutparamsfile,
+    cutdiameter,
+    xcenter,
+    ycenter,
+    bladeradius,
+    flag,
+    output_suffix="-Noshift",
+    fourier_max=2,
+    correction_max=0.070,
+    yres=0.5,
+    measrad=0.5,
+):
+    """
+    Generate cut camming files for a lens or alumina filter using
+    Fourier-corrected plane fitting results.
+
+    Parameters
+    ----------
+    xin, yin : ndarray
+        X and Y positions from metrology data.
+
+    p : array-like
+        Plane fit coefficients [a, b, c].
+
+    A_coef : array-like
+        Fourier coefficients returned by planefit(...).
+
+    pathname : str
+        Root path to write camming files.
+
+    spindle : str
+        Spindle identifier used in folder names.
+
+    calibrationfilepath : str
+        Path to calibration file for spindle offsets.
+
+    cutparamsfile : str
+        File containing cut depths and pitch.
+
+    cutdiameter : float
+        Diameter of the circular region to be cut.
+
+    xcenter, ycenter : float
+        Center coordinates for the circular cut.
+
+    bladeradius : float
+        Radius of the blade used for cutting.
+
+    flag : str
+        Cut type: 'Thick', 'Med', or 'Thin'.
+
+    output_suffix : str, optional
+        Suffix appended to the cut directory name.
+        Use '-Noshift' for planar lens cuts.
+        For alumina-filter cuts, use either '-Noshift' or
+        '-ActualDiameter'. Default is '-Noshift'.
+
+    fourier_max : int, optional
+        Maximum Fourier mode used by fourier_eval(...).
+        Default is 2.
+
+    correction_max : float, optional
+        Maximum allowed absolute value for Fourier correction.
+        Default is 0.070 mm.
+
+    yres : float, optional
+        Resolution in the Y direction. Default is 0.5 mm.
+
+    measrad : float, optional
+        Measurement radius. Default is 0.5 mm.
+
+    Returns
+    -------
+    str
+        Path to the generated cut directory, or 'Lockfile present'.
+    """
+    # Determine cut path
+    cutpath = os.path.join(
+        pathname,
+        spindle,
+        f"CutCamming{flag}{output_suffix}/",
+    )
+
+    # Lockfile check
+    lockfile = os.path.join(cutpath, "lockfile.lock")
+    if os.path.exists(lockfile):
+        print(f"Lockfile {flag} present")
+        return "Lockfile present"
+
+    os.makedirs(cutpath, exist_ok=True)
+
+    # Load cut parameters and spindle offsets
+    thick_depth, med_depth, thin_depth, cutpitch = (
+        cu.get_cut_parameters(
+            os.path.join(pathname, cutparamsfile)
+        )
+    )
+
+    newxoffset, newyoffset, newzoffset = (
+        cu.get_spindle_offsets(
+            calibrationfilepath,
+            spindle,
+        )
+    )
+
+    # Set depth and offsets
+    depth = {
+        "Thick": thick_depth,
+        "Med": thick_depth + med_depth,
+        "Thin": thick_depth + med_depth + thin_depth,
+    }[flag]
+
+    zoffset = newzoffset
+    xoffset = newxoffset
+    yoffset = newyoffset
+
+    # Plane function
+    def F(x, y, a, b, c):
+        return -a * x - b * y - c
+
+    # X range for cutting
+    xstart = xcenter - cutdiameter / 2.0 + yres
+    xend = xcenter + cutdiameter / 2.0
+    xs = np.arange(xstart, xend, cutpitch)
+
+    # Write master file
+    cutmasterfile = open(
+        os.path.join(cutpath, "Master.txt"),
+        "w",
+    )
+
+    for j, xx in enumerate(xs):
+        dx = xx - xcenter
+
+        if abs(dx) > cutdiameter / 2.0:
+            continue
+
+        dy = np.sqrt(
+            (cutdiameter / 2.0) ** 2
+            - dx ** 2
+        )
+
+        ystart = ycenter - dy
+        yend = ycenter + dy + 0.0001
+        ys = np.arange(ystart, yend, yres)
+
+        zs = np.zeros_like(ys)
+
+        for i, yy in enumerate(ys):
+            correction = fourier_eval(
+                A_coef,
+                xx,
+                yy,
+                fourier_max,
+            )
+
+            if abs(correction) > correction_max:
+                correction = (
+                    np.sign(correction)
+                    * correction_max
+                )
+
+            zs[i] = (
+                F(xx, yy, *p)
+                + correction
+                - zoffset
+                + bladeradius
+                - depth
+                - measrad
+            )
+
+        fname = os.path.join(
+            cutpath,
+            f"CutCam{flag}",
+        )
+
+        cu.make_cam_file(
+            fname,
+            j,
+            xx + xoffset,
+            ys + yoffset,
+            zs,
+        )
+
+        xvar = xx + xoffset
+        xstr = "%.3f" % xvar
+
+        cutmasterfile.write(
+            f"{j:04d} "
+            f"{xstr} "
+            f"{ys[0] + yoffset:.3f} "
+            f"{zs[0]:.3f} "
+            f"{ys[-1] + yoffset:.3f}\n"
+        )
+
+    cutmasterfile.close()
+
+    return cutpath
+
+def generate_planar_cutfiles_fromconfig(
+    xin,
+    yin,
+    p,
+    A_coef,
+    spindle,
+    orientation,
+    dicing_metadata_path,
+    planarparams_config_path,
+    output_suffix="-Noshift",
+    fourier_max=2,
+    correction_max=0.070,
+    yres=0.500,
+    measrad=0.500,
+):
+    """
+    Generate planar cut camming files using config files.
+
+    Parameters
+    ----------
+    xin, yin : ndarray
+        X and Y positions returned by planefit(...).
+
+    p : array-like
+        Plane-fit coefficients [a, b, c] returned by planefit(...).
+
+    A_coef : array-like
+        Fourier coefficients returned by planefit(...).
+
+    spindle : str
+        Spindle name.
+
+    orientation : str
+        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
+
+    dicing_metadata_path : str or pathlib.Path
+        Path to dicing_path_metadata.yaml.
+
+    planarparams_config_path : str or pathlib.Path
+        Path to planar_params.yaml.
+
+    output_suffix : str, optional
+        Suffix appended to the generated cut directory.
+        Default is '-Noshift'.
+
+        For planar lens Surface 2 cuts, use '-Noshift'.
+
+        For alumina-filter cuts, this may later be set to either
+        '-Noshift' or '-ActualDiameter'.
+
+    fourier_max : int, optional
+        Maximum Fourier mode used by fourier_eval(...).
+        Default is 2.
+
+    correction_max : float, optional
+        Maximum allowed absolute Fourier correction in mm.
+        Default is 0.070.
+
+    yres : float, optional
+        Y resolution in mm. Default is 0.500.
+
+    measrad : float, optional
+        Measurement-ball radius in mm. Default is 0.500.
+
+    Returns
+    -------
+    str
+        Path to generated cut directory, or 'Lockfile present'.
+    """
+    context = ch.get_cut_context(
+        spindle=spindle,
+        orientation=orientation,
+        dicing_metadata_path=dicing_metadata_path,
+        planarparams_config_path=planarparams_config_path,
+    )
+
+    if not str(context["base_dir"]).endswith("/"):
+        pathname = str(context["base_dir"]) + "/"
+    else:
+        pathname = str(context["base_dir"])
+
+    bladeradius = float(context["blade_diameter"]) / 2.0
+
+    return generate_planar_files(
+        xin=xin,
+        yin=yin,
+        p=p,
+        A_coef=A_coef,
+        pathname=pathname,
+        spindle=spindle,
+        calibrationfilepath=context["cal_file_path"],
+        cutparamsfile=context["cutparams_filepath"],
+        cutdiameter=float(context["cut_diam"]),
+        xcenter=float(context["xcenter"]),
+        ycenter=float(context["ycenter"]),
+        bladeradius=bladeradius,
+        flag=context["type"],
+        output_suffix=output_suffix,
+        fourier_max=fourier_max,
+        correction_max=correction_max,
+        yres=yres,
+        measrad=measrad,
+    )
+
+
+'''
 def generate_planar_files(
     xin,
     yin,
@@ -421,3 +775,4 @@ def generate_planar_files(
         cutmasterfile.write(f"{j:04d} {xstr} {ys[0] + yoffset:.3f} {zs[0]:.3f} {ys[-1] + yoffset:.3f}\n")
 
     cutmasterfile.close()
+'''
