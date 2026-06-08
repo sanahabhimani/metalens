@@ -173,7 +173,7 @@ def lensfit_fromconfig(
     dicing_metadata = ch.load_yaml_config(dicing_metadata_path)
     orientation_block = dicing_metadata["orientations"][orientation]
     metrology_path = Path(orientation_block["lens_metrology_file_path"])
-    cutsfile_path = Path(orientation_block["base_dir"])
+    #cutsfile_path = Path(orientation_block["base_dir"])
 
     pathname = str(metrology_path.parent)
     if not pathname.endswith("/"):
