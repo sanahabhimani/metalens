@@ -172,6 +172,40 @@ def get_lensparams_settings(lensparams_cfg):
         "cut_diam": cut_block.get("cut_diam"),
     }
 
+def get_planarparams_settings(planarparams_cfg):
+    """
+    Resolve planar cutting parameters.
+
+    Parameters
+    ----------
+    planarparams_cfg : dict
+        Contents of planar_params.yaml. Should only contain cut_daim, xcenter, ycenter values
+
+    Returns
+    -------
+    dict
+        Planar cut geometry.
+    """
+    planarparams_block = planarparams_cfg.get("planarparams", {})
+
+    required_keys = ("cut_diam", "xcenter", "ycenter")
+    missing_keys = [
+        key for key in required_keys
+        if key not in planarparams_block
+    ]
+
+    if missing_keys:
+        raise KeyError(
+            "Missing required planar parameter values: "
+            + ", ".join(missing_keys)
+        )
+
+    return {
+        "cut_diam": planarparams_block["cut_diam"],
+        "xcenter": planarparams_block["xcenter"],
+        "ycenter": planarparams_block["ycenter"],
+    }
+
 def build_cut_output_paths(base_dir, spindle, ftype):
     """
     Build output directory structure.
@@ -209,6 +243,7 @@ def get_cut_context(
     dicing_metadata_path,
     testtouch_config_path=None,
     lensparams_config_path=None,
+    planarparams_config_path=None
 ):
     """
     Resolve full context for a spindle + orientation.
@@ -220,6 +255,7 @@ def get_cut_context(
     dicing_config_path : str
     testtouch_config_path : str or None
     lensparams_config_path : str or None
+    planarparams_config_path: str or None
 
     Returns
     -------
@@ -267,7 +303,8 @@ def get_cut_context(
             "type": spindle_block["type"],
             "blade_diameter": spindle_block["blade_diameter"],
             "orientation": orientation,
-            "lens_metrology_file_path": orientation_block["lens_metrology_file_path"],
+            "lens_metrology_file_path": orientation_block.get("lens_metrology_file_path"),
+            "plane_metrology_file_path": orientation_block.get("plane_metrology_file_path"),
             "flange_metrology_file_path": orientation_block["flange_metrology_file_path"],
             "base_dir": Path(orientation_block["base_dir"]),
         }
@@ -282,5 +319,10 @@ def get_cut_context(
     if lensparams_config_path is not None:
         lensparams_cfg = load_yaml_config(lensparams_config_path)
         context.update(get_lensparams_settings(lensparams_cfg))
+
+
+    if planarparams_config_path is not None:
+        planarparams_cfg = load_yaml_config(planarparams_config_path)
+        context.update(get_planarparams_settings(planarparams_cfg))
 
     return context
