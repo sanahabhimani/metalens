@@ -6,6 +6,7 @@ from pathlib import Path
 from scipy import optimize as opt
 import core_utils as cu
 import planefit as pf
+import config_helper as ch
 
 def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, correction_zshift,
                            wear_coeff, exposureval, lastlinecut, firstline, numlines):
@@ -135,6 +136,64 @@ def shiftXZ_alumina_filter(directory, spindle, ftype, Xshift, zshift_fixed, corr
             mfileout.write(f"{linenum} {xsout[i]} {ys[i]} {zsout[i]} {ystops[i]}\n")
 
     cu.remove_lines(masterfiledir, firstline, firstline + numlines - 1, ftype)
+
+
+def shiftXZ_alumina_filter_fromconfig(
+    spindle,
+    orientation,
+    dicing_metadata_path,
+    testtouch_config_path,
+    planarparams_config_path,
+    lastlinecut,
+    firstline,
+    numlines,
+):
+    """
+    Apply x and z shifts to the no-shift CAM/Master files using config files.
+
+    Parameters
+    ----------
+    spindle : str
+        Spindle name.
+    orientation : str
+        Orientation key such as '0deg', '90deg', '180deg', or '270deg'.
+    dicing_metadata_path : str
+        Path to dicing_path_metadata.yaml
+    testtouch_config_path : str
+        Path to filter_testtouches.yaml
+
+    Returns
+    -------
+    None
+    """
+    context = get_cut_context_al(
+        spindle=spindle,
+        orientation=orientation,
+        dicing_metadata_path=dicing_metadata_path,
+        testtouch_config_path=testtouch_config_path,
+        planarparams_config_path=planarparams_config_path,
+    )
+
+    directory = Path(context["base_dir"]) / context["spindle"]
+    ftype = context["type"]
+    wear_coeff = context["wear_coeff"]
+    xshift = context["x_total_shift"]
+    zshift = context["zcorr"]
+    exposureval = context["exposureval"]
+
+    return shiftXZ_alumina_filter(
+        directory=directory,
+        spindle=spindle,
+        ftype=ftype,
+        Xshift=xshift,
+        zshift_fixed=0,
+        correction_zshift=zshift,
+        wear_coeff=wear_coeff,
+        exposureval=exposureval,
+        lastlinecut=lastlinecut,
+        firstline=firstline,
+        numlines=numlines,
+    )
 
 
 def wear_coefficient_update(path, spindle, cuttype, files):
