@@ -268,61 +268,109 @@ def get_cut_context(
 
     shared = get_shared_paths(dicing_metadata)
 
-    if testtouch_config_path is not None:
-        testtouch_cfg = load_yaml_config(testtouch_config_path)
-
-        spindle_settings = get_spindle_settings(
-            spindle, dicing_metadata, testtouch_cfg
-        )
-        orientation_settings = get_orientation_settings(
-            spindle, orientation, dicing_metadata, testtouch_cfg
-        )
-
-        context = {
-            **shared,
-            **spindle_settings,
-            **orientation_settings,
-        }
-
-        context["x_total_shift"] = (
-            context["x_center_shift"] + context["x_postcal_shift"]
-        )
-
-    else:
-        spindle_block = dicing_metadata.get("spindles", {}).get(spindle)
-        if spindle_block is None:
-            raise KeyError(f"Spindle '{spindle}' not found in dicing metadata")
-
-        orientation_block = dicing_metadata.get("orientations", {}).get(orientation)
-        if orientation_block is None:
-            raise KeyError(f"Orientation '{orientation}' not found in dicing metadata")
-
-        context = {
-            **shared,
-            "spindle": spindle,
-            "type": spindle_block["type"],
-            "blade_diameter": spindle_block["blade_diameter"],
-            "orientation": orientation,
-            "lens_metrology_file_path": orientation_block.get("lens_metrology_file_path"),
-            "plane_metrology_file_path": orientation_block.get("plane_metrology_file_path"),
-            "flange_metrology_file_path": orientation_block.get("flange_metrology_file_path"),
-            "base_dir": Path(orientation_block["base_dir"]),
-        }
-
-    output_paths = build_cut_output_paths(
-        base_dir=context["base_dir"],
-        spindle=spindle,
-        ftype=context["type"],
-    )
-    context.update(output_paths)
-
     if lensparams_config_path is not None:
+        if testtouch_config_path is not None:
+            testtouch_cfg = load_yaml_config(testtouch_config_path)
+
+            spindle_settings = get_spindle_settings(
+                spindle, dicing_metadata, testtouch_cfg
+            )
+            orientation_settings = get_orientation_settings(
+                spindle, orientation, dicing_metadata, testtouch_cfg
+            )
+
+            context = {
+                **shared,
+                **spindle_settings,
+                **orientation_settings,
+            }
+
+            context["x_total_shift"] = (
+                context["x_center_shift"] + context["x_postcal_shift"]
+            )
+
+        else:
+            spindle_block = dicing_metadata.get("spindles", {}).get(spindle)
+            if spindle_block is None:
+                raise KeyError(f"Spindle '{spindle}' not found in dicing metadata")
+
+            orientation_block = dicing_metadata.get("orientations", {}).get(orientation)
+            if orientation_block is None:
+                raise KeyError(f"Orientation '{orientation}' not found in dicing metadata")
+
+            context = {
+                **shared,
+                "spindle": spindle,
+                "type": spindle_block["type"],
+                "blade_diameter": spindle_block["blade_diameter"],
+                "orientation": orientation,
+                "lens_metrology_file_path": orientation_block.get("lens_metrology_file_path"),
+                "plane_metrology_file_path": orientation_block.get("plane_metrology_file_path"),
+                "flange_metrology_file_path": orientation_block.get("flange_metrology_file_path"),
+                "base_dir": Path(orientation_block["base_dir"]),
+            }
+
+        output_paths = build_cut_output_paths(
+            base_dir=context["base_dir"],
+            spindle=spindle,
+            ftype=context["type"],
+        )
+        context.update(output_paths)
         lensparams_cfg = load_yaml_config(lensparams_config_path)
         context.update(get_lensparams_settings(lensparams_cfg))
+        
 
 
     if planarparams_config_path is not None:
+        
+        if testtouch_config_path is not None:
+            testtouch_cfg = load_yaml_config(testtouch_config_path)
+
+            spindle_settings = get_spindle_settings(
+                spindle, dicing_metadata, testtouch_cfg
+            )
+            orientation_settings = get_orientation_settings(
+                spindle, orientation, dicing_metadata, testtouch_cfg
+            )
+
+            context = {
+                **shared,
+                **spindle_settings,
+                **orientation_settings,
+            }
+
+            context["x_total_shift"] = (
+                context["x_center_shift"] + context["x_postcal_shift"]
+            )
+
+        else:
+            spindle_block = dicing_metadata.get("spindles", {}).get(spindle)
+            if spindle_block is None:
+                raise KeyError(f"Spindle '{spindle}' not found in dicing metadata")
+
+            orientation_block = dicing_metadata.get("orientations", {}).get(orientation)
+            if orientation_block is None:
+                raise KeyError(f"Orientation '{orientation}' not found in dicing metadata")
+
+            context = {
+                **shared,
+                "spindle": spindle,
+                "type": spindle_block["type"],
+                "blade_diameter": spindle_block["blade_diameter"],
+                "orientation": orientation,
+                "exposureval": spindle_block["exposureval"],
+                "plane_metrology_file_path": orientation_block.get("plane_metrology_file_path"),
+                "base_dir": Path(orientation_block["base_dir"]),
+            }
+
+        output_paths = build_cut_output_paths(
+            base_dir=context["base_dir"],
+            spindle=spindle,
+            ftype=context["type"],
+        )
+        context.update(output_paths)
         planarparams_cfg = load_yaml_config(planarparams_config_path)
         context.update(get_planarparams_settings(planarparams_cfg))
+
 
     return context
