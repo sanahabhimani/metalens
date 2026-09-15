@@ -166,7 +166,7 @@ def shiftXZ_alumina_filter_fromconfig(
     -------
     None
     """
-    context = get_cut_context_al(
+    context = ch.get_cut_context(
         spindle=spindle,
         orientation=orientation,
         dicing_metadata_path=dicing_metadata_path,
