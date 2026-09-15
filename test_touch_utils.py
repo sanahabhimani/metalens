@@ -189,6 +189,75 @@ def gen_test_touch_points(path, calfilepath, testtouchmetfile, spindle, touchdep
             f.write(f"{i:04d} {x} {y} {z}\n")
 
 
+def gen_camera_test_touch_points(path, calfilepath, source_spindle, camera_name="Camera",
+                                 source_file=None, output_file=None, camera_focus_z=-48.239):
+    """
+    Generate camera positions corresponding to an existing spindle test-touch file.
+
+    Parameters
+    ----------
+    path : str
+        Base directory containing spindle folders and test-touch files.
+    calfilepath : str
+        Path to SpindleCal.txt
+    source_spindle : str
+        Spindle that made the test touches, e.g. 'SpindleC'
+    camera_name : str, optional
+        Name of the camera row in SpindleCal.txt
+    source_file : str, optional
+        Explicit path to source spindle test-touch file.
+        If None, defaults to:
+        <path>/<source_spindle>/<source_spindle>_Test_Touches.txt
+    output_file : str, optional
+        Explicit output path.
+        If None, defaults to:
+        <path>/<source_spindle>/<camera_name>_from_<source_spindle>_Test_Touches.txt
+    camera_focus_z : float, optional
+        Fixed Z value for camera imaging height. This does not shift with spindle test-touch Z.
+
+    Notes
+    -----
+    Input file format is assumed to be:
+        line_number x y z
+
+    Output file keeps the same line_number / test-touch index,
+    converts x and y from the source spindle coordinate system
+    into the camera coordinate system using SpindleCal offsets,
+    and sets z to a fixed camera focus height.
+    """
+    if source_file is None:
+        source_file = os.path.join(path, source_spindle, f"{source_spindle}_Test_Touches.txt")
+
+    if output_file is None:
+        output_file = os.path.join(
+            path,
+            source_spindle,
+            f"{camera_name}_from_{source_spindle}_Test_Touches.txt"
+        )
+
+    tt_data = np.loadtxt(source_file, dtype=float)
+
+    if tt_data.ndim == 1:
+        tt_data = tt_data.reshape(1, -1)
+
+    source_xoff, source_yoff, source_zoff = cu.get_spindle_offsets(calfilepath, source_spindle)
+    cam_xoff, cam_yoff, cam_zoff = cu.get_spindle_offsets(calfilepath, camera_name)
+
+    line_nums = tt_data[:, 0].astype(int)
+    x_src = tt_data[:, 1]
+    y_src = tt_data[:, 2]
+
+    x_cam = x_src - source_xoff + cam_xoff
+    y_cam = y_src - source_yoff + cam_yoff
+    z_cam = np.full(len(x_cam), camera_focus_z)
+
+    with open(output_file, "w") as f:
+        for idx, x, y, z in zip(line_nums, x_cam, y_cam, z_cam):
+            f.write(f"{idx:04d} {x} {y} {z}\n")
+
+    return output_file
+
+
 def rename_tt_lines(input_file, output_file, shift_amount):
     """
     Shift the first column (line number) in a 4-column test touch file by a specified amount,
